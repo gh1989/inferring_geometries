@@ -19,7 +19,7 @@ int main(){
 		
 	FourierSeries f_series(1);
 	f_series.set_mode( 1, 1, 0.5 - 0.5*_Complex_I );
-	discrete_function_approximation.populate( &f_series );
+	discrete_function_approximation.discretise( &f_series );
 	
 	Vector2d expected, output;
 	double x,y;

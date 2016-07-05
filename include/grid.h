@@ -31,8 +31,7 @@ struct Grid
 	Vector2d interpolate_gradient( Vector2d v );
 	double evaluate( double x, double y );
 	double evaluate( Vector2d v );
-	void populate( FourierSeries *pf_series );
-	void calculate_gradient_field();
+	void discretise( FourierSeries *pf_series );
 	
 };
 
@@ -121,112 +120,7 @@ Vector2d Grid::interpolate_gradient( double x, double y )
 	return ret;
 }
 
-void Grid::calculate_gradient_field()
-{
-	/* Take fft of the discrete range, multiply by ???
-	 * then take an ifft and we are left with a discrete
-	 * vector field for the gradient of the original 
-	 * scalar field.
-	 */
-	 
-	int idx;
-	
-	fftw_complex* in;
-	fftw_complex* out;
-	
-	in =  (fftw_complex*)fftw_malloc(sizeof(fftw_complex)*size_x*size_y);
-	out = (fftw_complex*)fftw_malloc(sizeof(fftw_complex)*size_x*size_y);
-	
-	// Is this the best way to get the populated grid?
-	for( int i=0; i<size_x; ++i )
-	for( int j=0; j<size_y; ++j )
-	{
-		in[i*size_y+j][0] = discrete_range(i,j);
-		in[i*size_y+j][1] = 0.0;
-	}
-
-	fftw_plan plan;
-	
-	plan = fftw_plan_dft_2d( size_x, size_y, in, out, 1, FFTW_ESTIMATE);
-	if( plan != NULL )
-		fftw_execute(plan);
-		
-	for( int i=0; i<size_x; ++i )
-		for( int j=0; j<size_y; ++j )
-		printf("[Debug] out[i*size_y + j ] = %f+%fi. \n", out[i*size_y + j][0],out[i*size_y + j][1] );
-		
-	fftw_complex *fdx;
-	fftw_complex *fdy;
-	fftw_complex *dy;
-	fftw_complex *dx;
-
-	fdx = (fftw_complex*)fftw_malloc(sizeof(fftw_complex)*size_x*size_y);
-	fdy = (fftw_complex*)fftw_malloc(sizeof(fftw_complex)*size_x*size_y);
-	dx = (fftw_complex*)fftw_malloc(sizeof(fftw_complex)*size_x*size_y);
-	dy = (fftw_complex*)fftw_malloc(sizeof(fftw_complex)*size_x*size_y);
-		
-	// What has to be multiplied here?
-	for( int i=0; i<size_x/2; ++i )
-		for( int j=0; j<size_y/2; ++j )
-		{
-			idx = i*size_y+j;
-			fdx[idx][0] = -(2*M_PI*i) / Lx * out[idx][1];
-			fdx[idx][1] =  (2*M_PI*i) / Lx * out[idx][0];
-			fdy[idx][0] = -(2*M_PI*j) / Ly * out[idx][1];
-			fdy[idx][1] =  (2*M_PI*j) / Ly * out[idx][0];
-		}
-	
-	for( int i=size_x/2; i<size_x; ++i )
-		for( int j=size_y/2; j<size_y; ++j )
-		{
-			idx = i*size_y+j;
-			fdx[idx][0] = -(2*M_PI*(i-size_x/2)) / Lx * out[idx][1];
-			fdx[idx][1] =  (2*M_PI*(i-size_x/2)) / Lx * out[idx][0];
-			fdy[idx][0] = -(2*M_PI*(j-size_y/2)) / Ly * out[idx][1];
-			fdy[idx][1] =  (2*M_PI*(j-size_y/2)) / Ly * out[idx][0];
-		}
-	
-	if (size_x % 2)
-	for( int j=0; j<size_y; ++j ) 
-	{
-		idx = (size_x/2)*size_y+size_y;
-		fdx[idx][0] = 0;
-		fdx[idx][1] = 0;
-	}
-	
-	if (size_y % 2)
-	for( int i=0; i<size_x; ++i ) 
-	{
-		idx = i*size_y+size_y/2;
-		fdy[idx][0] = 0;
-		fdy[idx][1] = 0;
-	}
-	
-	for( int i=0; i<size_x; ++i )
-		for( int j=0; j<size_y; ++j )
-		{
-			printf( "[Debug] fdx[i*size_y + j ] = %f+%fi. \n", fdx[i*size_y+j][0],fdx[i*size_y+j][1] );
-		}
-	
-	plan = fftw_plan_dft_2d(size_x, size_y, fdx, dx, -1, FFTW_ESTIMATE);
-	if( plan != NULL )
-		fftw_execute(plan);
-		
-	plan = fftw_plan_dft_2d(size_x, size_y, fdy, dy, -1, FFTW_ESTIMATE);
-	if( plan != NULL )
-		fftw_execute(plan);
-		
-	// Is this the best way to repopulate the gradient grid?
-	for( int i=0; i<size_x; ++i )
-	for( int j=0; j<size_y; ++j )
-	{
-		grad_discrete_range(i,2*j) = dx[i*size_y+j][0]/(size_x*size_y); 	//Should be real.
-		grad_discrete_range(i,2*j+1) = dy[i*size_y+j][0]/(size_x*size_y); 	
-	}
-	
-}
-
-void Grid::populate( FourierSeries *pf_series ) 
+void Grid::discretise( FourierSeries *pf_series ) 
 {
 	Vector2d tmp;
 
@@ -237,5 +131,146 @@ void Grid::populate( FourierSeries *pf_series )
 			discrete_range(i,j) =  pf_series->evaluate( tmp );
 		}
 	
-	calculate_gradient_field();
+	/* Take fft of the discrete range, multiply by ???
+	 * then take an ifft and we are left with a discrete
+	 * vector field for the gradient of the original 
+	 * scalar field.
+	 */
+	 
+	int idx;
+	int Nx = size_x;
+	int Ny = size_y;
+	
+	fftw_complex *y;
+	fftw_complex *Y;
+	y =  (fftw_complex*)fftw_malloc(sizeof(fftw_complex)*Nx*Ny);
+	Y = (fftw_complex*)fftw_malloc(sizeof(fftw_complex)*Nx*Ny);
+	
+	double Lx = max_x-min_x;
+	double Ly = max_y-min_y;
+	double dx = Lx/Nx;
+	double dy = Ly/Ny;
+	
+	for( int i=0; i<Nx; ++i )
+		for( int j=0; j<Ny; ++j ) {
+			idx = i*Ny + j;
+			y[idx][0] = discrete_range(i,j);
+			y[idx][1] = 0;
+	}
+	
+	fftw_complex* Vx;
+	fftw_complex* Vy;
+	fftw_complex* vx;
+	fftw_complex* vy;
+	Vx = (fftw_complex*)fftw_malloc(sizeof(fftw_complex)*Nx*Ny);
+	Vy = (fftw_complex*)fftw_malloc(sizeof(fftw_complex)*Nx*Ny);
+	vx = (fftw_complex*)fftw_malloc(sizeof(fftw_complex)*Nx*Ny);
+	vy = (fftw_complex*)fftw_malloc(sizeof(fftw_complex)*Nx*Ny);
+	
+	fftw_plan plan = fftw_plan_dft_2d(Nx, Ny, y, Y, 1, FFTW_ESTIMATE);
+	
+	if (plan != NULL)
+		fftw_execute(plan);
+	else
+		printf("Aborting: FFTW Plan is NULL.\n");
+	
+	/*
+	 *  For ifft for d/dx. 
+	 */
+	 
+	
+	for( int i=0; i<Nx/2; ++i )
+		for( int j=0; j<Ny; ++j ) {
+			idx = i*Ny + j;
+			Vx[idx][0] = -(2*M_PI*i/Lx)*Y[idx][1];
+			Vx[idx][1] =  (2*M_PI*i/Lx)*Y[idx][0];
+	}
+
+	for( int i=int(Nx/2); i<Nx; ++i )
+		for( int j=0; j<Ny; ++j ) {
+			idx = i*Ny + j;
+			Vx[idx][0] = -(2*M_PI*(i-Nx)/Lx)*Y[idx][1];
+			Vx[idx][1] =  (2*M_PI*(i-Nx)/Lx)*Y[idx][0];
+	}
+	
+	if (Nx%2==0) {
+		//printf("[Debug] Nx is even: Nx=%i... \n", Nx );
+		for( int j=0; j<Ny; ++j ) {
+			idx = (Nx/2)*Ny + j;
+			Vx[idx][0] = 0;
+			Vx[idx][1] = 0;
+		}
+	}
+	
+	/*
+	 *  For ifft for d/dy. 
+	 */
+	 
+	for( int i=0; i<Nx; ++i )
+		for( int j=0; j<Ny/2; ++j ) {
+			idx = i*Ny + j;
+			Vy[idx][0] = -(2*M_PI*j/Lx)*Y[idx][1];
+			Vy[idx][1] =  (2*M_PI*j/Lx)*Y[idx][0];
+	}
+
+	for( int i=0; i<Nx; ++i )
+		for( int j=int(Ny/2); j<Ny; ++j ) {
+			idx = i*Ny + j;
+			Vy[idx][0] = -(2*M_PI*(j-Ny)/Lx)*Y[idx][1];
+			Vy[idx][1] =  (2*M_PI*(j-Ny)/Lx)*Y[idx][0];
+	}
+	
+	if (Ny%2==0) {
+		//printf("[Debug] Ny is even: Nx=%i... \n", Nx );
+		for( int i=0; i<Nx; ++i ) {
+			idx = i*Ny + Ny/2;
+			Vy[idx][0] = 0;
+			Vy[idx][1] = 0;
+		}
+	}
+	
+	
+	plan = fftw_plan_dft_2d(Nx, Ny, Vx, vx, -1, FFTW_ESTIMATE);
+	if (plan != NULL)
+		fftw_execute(plan);
+	else
+		printf("Aborting: FFTW Plan is NULL.\n");
+		
+	double padding_coefficient = -Nx*Ny; // Absolutely no idea why this is. Esp. negative.
+	for( int i=0; i<Nx; ++i )
+		for( int j=0; j<Ny; ++j ) {
+			idx = i*Ny + j;
+			vx[idx][0]/=padding_coefficient;
+			vx[idx][1]/=padding_coefficient;
+			//printf("[Debug] vx[idx][0]=%f, \n", vx[idx][0] );
+		}
+	
+	plan = fftw_plan_dft_2d(Nx, Ny, Vy, vy, -1, FFTW_ESTIMATE);
+	if (plan != NULL)
+		fftw_execute(plan);
+	else
+		printf("Aborting: FFTW Plan is NULL.\n");
+	
+	for( int i=0; i<Nx; ++i )
+		for( int j=0; j<Ny; ++j ) {
+			idx = i*Ny + j;
+			vy[idx][0]/=padding_coefficient;
+			vy[idx][1]/=padding_coefficient;
+			//printf("[Debug] vy[idx][0]=%f, \n", vy[idx][0] );
+		}
+		
+	fftw_free(Y);
+	fftw_free(y);
+	fftw_free(Vx);
+	fftw_free(Vy);
+	fftw_free(vx);
+	fftw_free(vy);
+		
+	// Is this the best way to repopulate the gradient grid?
+	for( int i=0; i<size_x; ++i )
+	for( int j=0; j<size_y; ++j )
+	{
+		grad_discrete_range(i,2*j) = vx[i*size_y+j][0]; 	//Should be real.
+		grad_discrete_range(i,2*j+1) = vy[i*size_y+j][0]; 	
+	}
 }

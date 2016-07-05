@@ -4,6 +4,7 @@
 
 int main( int argc, char *argv[] )
 {
+	/*
 	int M = 3;
 	fftw_complex* in;
 	fftw_complex* out;
@@ -40,7 +41,7 @@ int main( int argc, char *argv[] )
 	}
 	
 	fftw_free(in);
-	fftw_free(out);
+	fftw_free(out);*/
 		
 	double min_x, min_y, max_x, max_y;
 	min_x = 0;
@@ -48,12 +49,12 @@ int main( int argc, char *argv[] )
 	min_y = 0;
 	max_y = 1;
 	
-	const int Nx = 32;
-	const int Ny = 32;
+	const int Nx = 7;
+	const int Ny = 7;
 	
 	FourierSeries f_series(1);
-	f_series.set_mode( 1, 1, - 0.5*_Complex_I );
-	
+	f_series.set_mode( 1, 1, -0.5*_Complex_I );
+	f_series.print_modes();
 	
 	fftw_complex *y;
 	fftw_complex *Y;
@@ -67,8 +68,8 @@ int main( int argc, char *argv[] )
 	
 	int idx;
 	
-	printf("%f. \n",f_series.evaluate( 0.25, 0 ));
-	printf("%f. \n",f_series.grad( 0, 0 ));
+	printf("f_series.evaluate( 0.25, 0 )=%f. \n", f_series.evaluate( 0.25, 0 ));
+	printf("f_series.grad( 0, 0 )=%f. \n", f_series.grad( 0, 0 )(0) );
 	
 	for( int i=0; i<Nx; ++i )
 		for( int j=0; j<Ny; ++j ) {
@@ -82,7 +83,7 @@ int main( int argc, char *argv[] )
 	V = (fftw_complex*)fftw_malloc(sizeof(fftw_complex)*Nx*Ny);
 	v = (fftw_complex*)fftw_malloc(sizeof(fftw_complex)*Nx*Ny);
 	
-	plan = fftw_plan_dft_2d(Nx, Ny, y, Y, 1, FFTW_ESTIMATE);
+	fftw_plan plan = fftw_plan_dft_2d(Nx, Ny, y, Y, 1, FFTW_ESTIMATE);
 	
 	if (plan != NULL)
 		fftw_execute(plan);
@@ -113,29 +114,29 @@ int main( int argc, char *argv[] )
 	}
 	
 	plan = fftw_plan_dft_2d(Nx, Ny, V, v, -1, FFTW_ESTIMATE);
-	
+	if (plan != NULL)
+		fftw_execute(plan);
+	else
+		printf("Aborting: FFTW Plan is NULL.\n");
+		
+	double padding_coefficient = -Nx*Ny; // Absolutely no idea why this is. Esp. negative.
 	for( int i=0; i<Nx; ++i )
 		for( int j=0; j<Ny; ++j ) {
 			idx = i*Ny + j;
-			v[idx][0]/=(Nx*Ny);
-			v[idx][1]/=(Nx*Ny);
-	}
+			v[idx][0]/=padding_coefficient;
+			v[idx][1]/=padding_coefficient;
+			printf("[Debug] v[idx][0]=%f, \n", v[idx][0] );
+		}
 	
-	int i = 10;
-	int j = 10;
-	double x = min_x + i*dx;
-	double yy = min_y + j*dy;
-	
-	printf( "Testing d/dx at the point (x,y) = (%f, %f). \n", x, yy );
-	printf( "Expected d/dx: %f. Actual d/dx: %f\n", f_series.grad( x, yy ),v[ i*Ny + j ][0] );
-	
-	i = 12;
-	j = 12;
-	x = min_x + i*dx;
-	yy = min_y + j*dy;
-	
-	printf( "Testing d/dx at the point (x,y) = (%f, %f). \n", x, yy );
-	printf( "Expected d/dx: %f. Actual d/dx: %f\n", f_series.grad( x, yy ),v[ i*Ny + j ][0] );
+	double x, yy;
+	for( int i=0; i<Nx; ++i )
+		for( int j=0; j<Ny; ++j ) {
+			x = min_x + i*dx;
+			yy = min_y + j*dy;
+			printf( "Testing d/dx at the point (x,y) = (%f, %f). \n", x, yy );
+			printf( "Expected d/dx: %f. Actual d/dx: %f. Ratio: %f \n", 
+					f_series.grad(x, yy)(0), v[i*Ny+j][0], v[i*Ny+j][0]/f_series.grad(x, yy)(0) );
+		}
 	
 	fftw_free(Y);
 	fftw_free(y);

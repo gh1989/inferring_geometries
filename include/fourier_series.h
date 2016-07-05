@@ -158,6 +158,7 @@ Vector2d FourierSeries::grad( double x, double y )
 	ret(0) = creal( x_component );
 	ret(1) = creal( y_component );
 	
+	//printf("[FourierSeries::grad] x=%f, y=%f \n", x, y);
 	return ret;
 }
 
@@ -165,19 +166,28 @@ Vector2d FourierSeries::grad( Vector2d v )
 {	
 	double x = v(0);
 	double y = v(1);
-	
+
 	return grad( x, y );
 }
 
 double FourierSeries::evaluate( double x, double y )
 {
 	double _Complex ret = 0;
+	double _Complex tmp;
+	double _Complex mode;
 	
 	for( int i=-M; i<M+1; ++i )
 		for( int j=-M; j<M+1; ++j )
-				ret += cexp(  two_pi_i*(i*x+j*y) );
-				
-	return creal( ret );
+		{
+			mode = get_mode( i, j );
+			ret += mode*cexp(  two_pi_i*(i*x+j*y) );
+		}		
+	//printf("[FourierSeries::evaluate] x=%f, y=%f \n", x, y);
+	
+	double return_value = creal( ret );
+	//printf("[FourierSeries::evaluate] return_value=%f \n", return_value );
+	
+	return return_value;
 }
 
 double FourierSeries::evaluate( Vector2d v )
