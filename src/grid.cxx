@@ -16,27 +16,11 @@ int main(){
 	const int ny = 100;
 	
 	Grid discrete_function_approximation(min_x, min_y, max_x, max_y, nx, ny );
-	
-	/*
-	for( int i=0; i<nx; ++i )
-		printf("[Grid] x[%i]=%f. \n", i, discrete_function_approximation.discrete_domain_x(i));
 		
-	for( int i=0; i<ny; ++i )
-		printf("[Grid] y[%i]=%f. \n", i, discrete_function_approximation.discrete_domain_y(i));
-	*/
-	
 	FourierSeries f_series(1);
 	f_series.set_mode( 1, 1, 0.5 - 0.5*_Complex_I );
 	discrete_function_approximation.populate( &f_series );
 	
-	/*
-	for( int i=0; i<nx; ++i )
-	for( int j=0; j<ny; ++j )
-	{
-		printf("[Grid] grid(%i,%i)=%f. ", i, 2*j, discrete_function_approximation.discrete_range(i,2*j));
-		printf("[Grid] grid(%i,%i)=%f. \n", i, 2*j+1, discrete_function_approximation.discrete_range(i,2*j+1));
-	}
-	*/
 	Vector2d expected, output;
 	double x,y;
 	

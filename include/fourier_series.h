@@ -14,7 +14,9 @@ const double _Complex two_pi_i = 2*M_PI*_Complex_I;
 struct FourierSeries
 {
 	Vector2d grad( Vector2d );
+	Vector2d grad( double, double );
 	double evaluate( Vector2d );
+	double evaluate( double, double );
 	void set_mode( int,  int, double _Complex );
 	void set_modes( double _Complex* );
 	double _Complex get_mode( int, int );
@@ -26,6 +28,7 @@ struct FourierSeries
 	void print_modes();
 	int M;
 };
+
 
 FourierSeries::FourierSeries( int M_ ) : M(M_), total_modes( (2*M_+1)*(2*M_+1) )
 {
@@ -121,12 +124,9 @@ double _Complex FourierSeries::get_mode( int i, int j )
 	return the_mode;
 }
 
-Vector2d FourierSeries::grad( Vector2d v )
+Vector2d FourierSeries::grad( double x, double y )
 {	
 	Vector2d ret;
-	
-	double x = v(0);
-	double y = v(1);
 	
 	double _Complex x_component;
 	double _Complex y_component;	
@@ -161,11 +161,17 @@ Vector2d FourierSeries::grad( Vector2d v )
 	return ret;
 }
 
-double FourierSeries::evaluate( Vector2d v )
-{
-	double _Complex ret = 0;
+Vector2d FourierSeries::grad( Vector2d v )
+{	
 	double x = v(0);
 	double y = v(1);
+	
+	return grad( x, y );
+}
+
+double FourierSeries::evaluate( double x, double y )
+{
+	double _Complex ret = 0;
 	
 	for( int i=-M; i<M+1; ++i )
 		for( int j=-M; j<M+1; ++j )
@@ -173,6 +179,14 @@ double FourierSeries::evaluate( Vector2d v )
 				
 	return creal( ret );
 }
+
+double FourierSeries::evaluate( Vector2d v )
+{
+	double x = v(0);
+	double y = v(1);
+	return evaluate( x, y );
+}
+
 
 /*
  * Helper functions.
