@@ -6,13 +6,13 @@ int main( int argc, char *argv[] )
 	// s: The random number generator seed for GSL library.
 	int rng_seed = 123456789;
 	// P: Number of timesteps per path generated for the particle.
-	int path_steps = 64;
+	int path_steps = 16;
 	// N: Iterations in the MCMC algo.
-	int mcmc_trials = 128;
+	int mcmc_trials = 1000;
 	// c: Parameter perturbation amount.
-	double param_delta = 0.5;
+	double param_delta = 0.05;
 	// d: Observation Y perturbation amount.
-	double obs_delta = 0.1;
+	double obs_delta = 0.01;
 	// p: The timestep for the particle's path in the discretisation.
 	double path_delta = 0.001;
 	// b: Burn in time.
@@ -80,6 +80,9 @@ int main( int argc, char *argv[] )
 	real_v.set_mode( 0, 1, 0.5 - 0.5*_Complex_I);
 	real_v.set_mode( 1, 0, 0.5 - 0.5*_Complex_I);
 	
+	Grid real_g( -1, 1, -1, 1, 100, 100 );
+	real_g.discretise( &real_v );
+	
 	// Identity matrix for the diffusion matrix.
 	Matrix2d C;
 	C << sigma, 0, 
@@ -108,7 +111,7 @@ int main( int argc, char *argv[] )
 	Vector2d *real_path, *y;
 	real_path = ( Vector2d* ) malloc( parallel_paths*path_steps*sizeof( Vector2d ) );
 	for( int i=0; i<parallel_paths; ++i )
-		em_overdamped_langevin( path_steps, path_delta, C, &real_v, real_path+i*path_steps, r, real_starting_points[i]);
+		em_fast_overdamped_langevin( path_steps, path_delta, C, &real_g, real_path+i*path_steps, r, real_starting_points[i]);
 
 	y = ( Vector2d* ) malloc( parallel_paths*path_steps*sizeof( Vector2d ) );
 	for( int i=0; i<parallel_paths; ++i)
@@ -145,13 +148,16 @@ int main( int argc, char *argv[] )
 	FourierSeries v(1);
 	v.set_modes( c );
 	
+	Grid grid( -1, 1, -1, 1, 100, 100 );
+	grid.discretise( &v );
+	
 	Vector2d *x_star = (Vector2d*) malloc( path_steps*parallel_paths*sizeof( Vector2d ) );
 	Vector2d *x = (Vector2d*) malloc( path_steps*parallel_paths*sizeof( Vector2d ) );
 	
 	for( int i=0; i<parallel_paths; ++i )
 	{
 		printf("[Debug] EM %i \n", i);
-		em_overdamped_langevin( path_steps, path_delta, C, &v, x+i*path_steps, r, observed_starting_points[i]);
+		em_fast_overdamped_langevin( path_steps, path_delta, C, &grid, x+i*path_steps, r, observed_starting_points[i]);
 	}
 	printf("\n ********** \n Starting MCMC. \n ********** \n");
 	for( int i=0; i<mcmc_trials+burn; ++i )
@@ -161,9 +167,9 @@ int main( int argc, char *argv[] )
 			c_star[j] = gsl_ran_gaussian( r, param_delta ) + gsl_ran_gaussian( r, param_delta )*_Complex_I + c[j]; // c* ~ N(c, param_delta).
 		
 		v.set_modes( c_star );
-		
+		grid.discretise( &v );
 		for( int i=0; i<parallel_paths; ++i )
-			em_overdamped_langevin( path_steps, path_delta, C, &v, x_star+i*path_steps, r, observed_starting_points[i]); // Generate x*
+			em_fast_overdamped_langevin( path_steps, path_delta, C, &grid, x_star+i*path_steps, r, observed_starting_points[i]); // Generate x*
 		
 		log_u = log( gsl_rng_uniform(r) );
 		p_param_prob = log_p( c_star, param_delta, param_size) - log_p( c, param_delta, param_size);		

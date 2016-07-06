@@ -22,6 +22,9 @@ struct Grid
 	int size_x;
 	int size_y;
 	
+	int Nx;
+	int Ny;
+	
 	Array<double, Dynamic, 1> discrete_domain_x;
 	Array<double, Dynamic, 1> discrete_domain_y;
 	Array<double, Dynamic, Dynamic> discrete_range;
@@ -35,26 +38,29 @@ struct Grid
 	
 };
 
-Grid::Grid( double min_x_, double min_y_, double max_x_,double  max_y_, int size_x_, int size_y_) : 
+Grid::Grid( double min_x_, double max_x_, double min_y_ ,double  max_y_, int size_x_, int size_y_) : 
 		min_x( min_x_ ), min_y( min_y_ ), max_x( max_x_ ), max_y( max_y_ ), size_x(size_x_), size_y(size_y_)
 {
+	Nx = size_x+1;
+	Ny = size_y+1;
+	
 	x_delta = (max_x-min_x)/size_x;
 	y_delta = (max_y-min_y)/size_y;
-	
+		
 	Lx = max_x-min_x;
 	Ly = max_y-min_y;
 	
-	discrete_domain_x = Array<double, Dynamic, 1>( size_x );
-	discrete_domain_y = Array<double, Dynamic, 1>( size_y );
+	discrete_domain_x = Array<double, Dynamic, 1>( Nx );
+	discrete_domain_y = Array<double, Dynamic, 1>( Ny );
 		
-	for( int i=0; i<size_x; ++i )
+	for( int i=0; i<Nx; ++i )
 		discrete_domain_x(i) = min_x + i*x_delta;
 	
-	for( int j=0; j<size_y; ++j )
+	for( int j=0; j<Ny; ++j )
 		discrete_domain_y(j) = min_y + j*y_delta;
 	
-	discrete_range = Array<double, Dynamic, Dynamic>( size_x, size_y );
-	grad_discrete_range = Array<double, Dynamic, Dynamic>( size_x, 2*size_y );
+	discrete_range = Array<double, Dynamic, Dynamic>( Nx, Ny );
+	grad_discrete_range = Array<double, Dynamic, Dynamic>( Nx, 2*Ny );
 }
 
 
@@ -75,18 +81,56 @@ double Grid::evaluate( double x, double y )
 
 Vector2d Grid::interpolate_gradient( double x, double y )
 {
+	printf("[Debug] Got here 1...");
 	Vector2d ret;
 	Vector2d x_diffs;
 	Vector2d y_diffs;
 	Matrix2d grid_vals;
+
 	
-	int lower_x_idx = x / x_delta;
+   /*
+	* Find the respective index
+	*/
+	int lower_x_idx = static_cast<int>( (x - min_x ) / x_delta );
 	int upper_x_idx = lower_x_idx + 1;
 	
-	int lower_y_idx = y / y_delta;
+	int lower_y_idx = static_cast<int>( (y - min_y) / y_delta );
 	int upper_y_idx = lower_y_idx + 1;
 	
 	double x1, x2, y1, y2;
+	
+	if ((lower_x_idx < 0) || (upper_x_idx < 0) || (lower_y_idx < 0) || (upper_y_idx < 0))
+		printf("[Problem at: x=%f, y=%f ] lower_x_idx=%i, upper_x_idx=%i, lower_y_idx=%i, upper_y_idx=%i. \n", x, y,
+				lower_x_idx, upper_x_idx, lower_y_idx, upper_y_idx );
+	
+	if ((lower_x_idx >= Nx) || (upper_x_idx >= Nx) || (lower_y_idx >= Ny) || (upper_y_idx >= Ny))
+		printf("[Problem at: x=%f, y=%f ] lower_x_idx=%i, upper_x_idx=%i, lower_y_idx=%i, upper_y_idx=%i. \n", x, y,
+				lower_x_idx, upper_x_idx, lower_y_idx, upper_y_idx );
+	
+	while (upper_y_idx > Ny-1)
+	{
+		upper_y_idx--;
+		lower_y_idx--;
+	}
+	
+	while (upper_x_idx > Nx-1)
+	{
+		upper_x_idx--;
+		lower_x_idx--;
+	}
+	
+	while (lower_x_idx < 0)
+	{
+		upper_x_idx++;
+		lower_x_idx++;
+	}
+	
+	while (lower_y_idx <0)
+	{
+		upper_y_idx++;
+		lower_y_idx++;
+	}
+	
 	x1 = discrete_domain_x(lower_x_idx);
 	x2 = discrete_domain_x(upper_x_idx);
 	y1 = discrete_domain_y(lower_y_idx);
@@ -96,8 +140,9 @@ Vector2d Grid::interpolate_gradient( double x, double y )
 	x_diffs << x2-x, x-x1;
 	y_diffs << y2-y, y-y1;
 	
+	printf("2...");
 	double v11, v12, v21, v22;
-	v11 = grad_discrete_range(lower_x_idx, 2*lower_y_idx);
+  v11 = grad_discrete_range(lower_x_idx, 2*lower_y_idx);
 	v21 = grad_discrete_range(lower_x_idx, 2*upper_y_idx);
 	v12 = grad_discrete_range(upper_x_idx, 2*lower_y_idx);
 	v22 = grad_discrete_range(upper_x_idx, 2*upper_y_idx);
@@ -106,7 +151,7 @@ Vector2d Grid::interpolate_gradient( double x, double y )
 				 v21, v22;
 	
 	ret(0) = coefficient*x_diffs.transpose()*grid_vals*y_diffs;
-	
+	printf("3...");
 	v11 = grad_discrete_range(lower_x_idx, 2*lower_y_idx+1);
 	v21 = grad_discrete_range(lower_x_idx, 2*upper_y_idx+1);
 	v12 = grad_discrete_range(upper_x_idx, 2*lower_y_idx+1);
@@ -114,18 +159,18 @@ Vector2d Grid::interpolate_gradient( double x, double y )
 	
 	grid_vals << v11, v12, 
 				 v21, v22;
-	
+	printf("4...");
 	ret(1) = coefficient*x_diffs.transpose()*grid_vals*y_diffs;
-	
+	printf("5... \n");
 	return ret;
 }
 
 void Grid::discretise( FourierSeries *pf_series ) 
 {
 	Vector2d tmp;
-
-	for( int i=0; i<size_x; ++i )
-		for( int j=0; j<size_y; ++j )
+	
+	for( int i=0; i<Nx; ++i )
+		for( int j=0; j<Ny; ++j )
 		{
 			tmp << discrete_domain_x(i), discrete_domain_y(j);
 			discrete_range(i,j) =  pf_series->evaluate( tmp );
@@ -138,8 +183,6 @@ void Grid::discretise( FourierSeries *pf_series )
 	 */
 	 
 	int idx;
-	int Nx = size_x;
-	int Ny = size_y;
 	
 	fftw_complex *y;
 	fftw_complex *Y;
@@ -267,10 +310,10 @@ void Grid::discretise( FourierSeries *pf_series )
 	fftw_free(vy);
 		
 	// Is this the best way to repopulate the gradient grid?
-	for( int i=0; i<size_x; ++i )
-	for( int j=0; j<size_y; ++j )
+	for( int i=0; i<Nx; ++i )
+	for( int j=0; j<Ny; ++j )
 	{
-		grad_discrete_range(i,2*j) = vx[i*size_y+j][0]; 	//Should be real.
-		grad_discrete_range(i,2*j+1) = vy[i*size_y+j][0]; 	
+		grad_discrete_range(i,2*j) = vx[i*Ny+j][0]; 	//Should be real.
+		grad_discrete_range(i,2*j+1) = vy[i*Ny+j][0]; 	
 	}
 }
