@@ -18,7 +18,7 @@ int main( int argc, char *argv[] )
 	// b: Burn in time.
 	int burn = 0;
 	// o: sigma of the diffusion
-	double sigma = 0.1;
+	double sigma = 0.01;
 	// k: number of parallel particles
 	int parallel_paths = 1;
 	

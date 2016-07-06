@@ -64,6 +64,21 @@ int em_fast_overdamped_langevin( int n, double dt, Matrix2d C, Grid *V, Vector2d
 	for( int i = 1; i<n; ++i )
 	{
 		xi << gsl_ran_gaussian(r,1), gsl_ran_gaussian(r,1); 
+
+		// while would work more robustly, no while loops...
+		if( x(0) < min_x ) 
+			x(0) += (max_x-min_x);
+		
+		if( x(0) > max_x ) 
+			x(0) -= (max_x-min_x);
+		
+		// while would work more robustly, no while loops...
+		if( x(1) < min_y ) 
+		    x(1) += (max_y-min_y);
+		
+		if( x(1) > max_y ) 
+			x(1) -= (max_y-min_y);
+
 		x += -V->interpolate_gradient( x )*dt + C*xi*rootdt;
 
 		// while would work more robustly, no while loops...
@@ -79,6 +94,7 @@ int em_fast_overdamped_langevin( int n, double dt, Matrix2d C, Grid *V, Vector2d
 		
 		if( x(1) > max_y ) 
 			x(1) -= (max_y-min_y);
+	
 				
 		data[i] = x;
 	}

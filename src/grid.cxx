@@ -37,17 +37,22 @@ int main(){
 	printf("[Debug] Expect: lower_idx:98 , upper_idx:99. \n");
 	index_test(1.0, min_x, max_x, x_delta, nx);
 	
+	printf("[Debug] Got here! \n");
 	Grid discrete_function_approximation(min_x, max_x, min_y, max_y, nx, ny );
+	printf("[Debug] Got here! \n");
 	FourierSeries f_series(1);
+	printf("[Debug] Got here! \n");
 	f_series.set_mode( 1, 1, -0.5*_Complex_I );
+	printf("[Debug] Got here! \n");
 	discrete_function_approximation.discretise( &f_series );
-	
+	printf("[Debug] Got here! \n");
 	interpolation_gradient_test(0.0, 0.0, &discrete_function_approximation, &f_series);
 	interpolation_gradient_test(0.125, 0.25, &discrete_function_approximation, &f_series);
 	interpolation_gradient_test(0.06125, 0.0125, &discrete_function_approximation, &f_series);
 	interpolation_gradient_test(0.030625, 0.06125, &discrete_function_approximation, &f_series);
-	interpolation_gradient_test(-1.0, 0.06125, &discrete_function_approximation, &f_series);
-	interpolation_gradient_test(1.0, 4.06125, &discrete_function_approximation, &f_series);
+	// It is not the responsibility of the interpolation on periodic BCs to ensure that the vector is within bounds
+	interpolation_gradient_test(-1.0, 0.06125, &discrete_function_approximation, &f_series);	
+	//interpolation_gradient_test(1.0, 4.06125, &discrete_function_approximation, &f_series);
 	
 	return 0;
 }
