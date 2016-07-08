@@ -86,7 +86,7 @@ int main( int argc, char *argv[] )
 	V = (fftw_complex*)fftw_malloc(sizeof(fftw_complex)*Nx*Ny);
 	v = (fftw_complex*)fftw_malloc(sizeof(fftw_complex)*Nx*Ny);
 	
-	fftw_plan plan = fftw_plan_dft_2d(Nx, Ny, y, Y, 1, FFTW_ESTIMATE);
+	plan = fftw_plan_dft_2d(Nx, Ny, y, Y, 1, FFTW_ESTIMATE);
 	
 	if (plan != NULL)
 		fftw_execute(plan);
