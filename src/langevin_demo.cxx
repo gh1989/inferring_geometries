@@ -116,25 +116,13 @@ int main(int argc,char *argv[])
 	v.set_mode( 0, 1, 0.5 - 0.5*_Complex_I);
 	v.set_mode( 1, 0, 0.5 - 0.5*_Complex_I);
 	
-	Grid grid(-1,1,-1,1,100,100);
-	grid.discretise( &v );
-	
 	// The diffusion matrix
 	Eigen::Matrix2d C;
 	C << sigma, 0, 0, sigma;
-		
+			
 	for( int i=0; i<parallel_paths; ++i)
 	{
-		printf("[Debug] Starting_points[%i]=(%f,%f) \n", i, starting_points[i](0), starting_points[i](1));
-	}
-	
-	
-	for( int i=0; i<parallel_paths; ++i)
-	{
-		printf("[Debug] About to generate for starting_points[%i] \n", i);
-		em_fast_overdamped_langevin(path_steps, dt, C, &grid, data+i*path_steps, r, starting_points[i]);
-		//em_overdamped_langevin(path_steps, dt, C, &v, data+i*path_steps, r, starting_points[i]);
-		printf("[Debug] Generated for starting_points[%i] \n", i);
+		em_overdamped_langevin(path_steps, dt, C, &v, data+i*path_steps, r, starting_points[i]);
 	}
 	
 	if ( print_data )
@@ -144,7 +132,7 @@ int main(int argc,char *argv[])
 				}
 			printf("\n");
 		}
-	printf("[Debug] Got here! \n");
+
 	// Output the data to a text file
 	FILE *fp_data;
 	fp_data = fopen(output_data_file, "w+");

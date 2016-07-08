@@ -16,34 +16,35 @@ set_property(TARGET gsl PROPERTY IMPORTED_LOCATION /usr/local/lib/libgsl.a)
 add_library(gslcblas STATIC IMPORTED)
 set_property(TARGET gslcblas PROPERTY IMPORTED_LOCATION /usr/local/lib/libgslcblas.a)
 
-add_library(euler src/euler_maruyama.cxx)
-add_library(fourier src/fourier_series.cxx)
+add_library(euler_maruyama src/euler_maruyama.cxx)
+
+
+add_library(fourier_series src/fourier_series.cxx)
+
 add_library(mcmc src/mcmc.cxx)
 add_library(grid src/grid.cxx)
+target_link_libraries(grid fftw3)
+target_link_libraries( euler_maruyama fftw3 grid )
+include_directories ( include /usr/local/include/eigen3 )
 
-include_directories ( include /usr/include/eigen3)
+add_executable( grid_demo src/grid_demo.cxx )
+target_link_libraries( grid_demo fftw3 grid fourier_series )
 
-add_executable( grid_test src/grid.cxx )
-target_link_libraries( grid_test fftw3 fourier  )
+add_executable( mcmc_ou_demo src/mcmc_ou_demo.cxx )
+target_link_libraries( mcmc_ou_demo mcmc euler_maruyama fourier_series gsl gslcblas)
 
-#add_executable( ou_mcmc src/ou_mcmc.cxx )
-#target_link_libraries( ou_mcmc euler fourier gsl gslcblas)
+add_executable(langevin_demo src/langevin_demo.cxx)
+target_link_libraries(langevin_demo euler_maruyama fourier_series gsl gslcblas)
+target_compile_features(langevin_demo PRIVATE cxx_range_for)
 
-#add_executable( euler_maruyama src/euler_maruyama.cxx )
-#target_link_libraries( euler_maruyama euler fourier gsl gslcblas)
+add_executable(fourier_series_demo src/fourier_series_demo.cxx)
+target_link_libraries(fourier_series_demo euler_maruyama fourier_series gsl gslcblas)
 
-#add_executable(trajectory src/trajectory.cxx)
-#target_link_libraries(trajectory fftw3 euler fourier gsl gslcblas)
-#target_compile_features(trajectory PRIVATE cxx_range_for)
+add_executable(mcmc_langevin_demo src/mcmc_langevin_demo.cxx)
+target_link_libraries(mcmc_langevin_demo mcmc euler_maruyama fourier_series gsl gslcblas)
 
-#add_executable(fourier_series src/fourier_series.cxx)
-#target_link_libraries(fourier_series fftw3 euler fourier gsl gslcblas)
+add_executable(mcmc_langevin_single_demo src/mcmc_langevin_single_demo.cxx)
+target_link_libraries(mcmc_langevin_single_demo mcmc euler_maruyama fourier_series gsl gslcblas)
 
-#add_executable(mcmcfuncs src/mcmc.cxx)
-#target_link_libraries(mcmcfuncs fftw3 euler fourier gsl gslcblas)
-
-#add_executable(one_param_mcmc src/one_param_mcmc.cxx)
-#target_link_libraries(one_param_mcmc fftw3 euler fourier gsl gslcblas)
-
-add_executable( fourier_transform src/fourier_transform.cxx )
-target_link_libraries( fourier_transform fftw3 gsl gslcblas )
+add_executable( fourier_transform_demo src/fourier_transform_demo.cxx )
+target_link_libraries( fourier_transform_demo fftw3 fourier_series gsl gslcblas )
