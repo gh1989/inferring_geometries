@@ -1,10 +1,13 @@
-#include "fourier_transform.h"
+#include <fftw3.h>
+#include <stdio.h>
+#include <math.h>
+#include <complex.h>
 #include "fourier_series.h"
 #include "grid.h"
 
 int main( int argc, char *argv[] )
 {
-	/*
+
 	int M = 3;
 	fftw_complex* in;
 	fftw_complex* out;
@@ -41,7 +44,7 @@ int main( int argc, char *argv[] )
 	}
 	
 	fftw_free(in);
-	fftw_free(out);*/
+	fftw_free(out);
 		
 	double min_x, min_y, max_x, max_y;
 	min_x = 0;
