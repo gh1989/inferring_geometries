@@ -1,3 +1,4 @@
+#include "file_io.h"
 #include "mcmc.h"
 #include <getopt.h>
 
@@ -12,7 +13,9 @@ int main( int argc, char *argv[] )
 	// c: Parameter perturbation amount.
 	double param_delta = 0.05;
 	// d: Observation Y perturbation amount.
-	double obs_delta = 0.01;
+	double obs_sigma = 0.01;
+	// j: observational timestep
+	double obs_delta = 0.001;
 	// p: The timestep for the particle's path in the discretisation.
 	double path_delta = 0.001;
 	// b: Burn in time.
@@ -20,13 +23,14 @@ int main( int argc, char *argv[] )
 	// o: sigma of the diffusion
 	double sigma = 0.01;
 	// k: number of parallel particles
-	int parallel_paths = 1;
-	
+	int parallel_paths = 20;
+	// h: histogram bins
+	int bins = 100;
 	// The option.
 	int opt;
 	
 	// Get options from command line.
-	while( ( opt = getopt( argc, argv, ":s:P:N:c:d:p:b:q:o:k:" ) ) != EOF ) 
+	while( ( opt = getopt( argc, argv, ":s:P:N:c:d:p:b:q:o:k:h:" ) ) != EOF ) 
 	{
 	switch (opt)
 		{
@@ -47,7 +51,7 @@ int main( int argc, char *argv[] )
 			break;
 			
 			case 'd':
-			obs_delta = atof(optarg);
+			obs_sigma = atof(optarg);
 			break;
 			
 			case 'p':
@@ -65,6 +69,14 @@ int main( int argc, char *argv[] )
 			case 'k':
 			parallel_paths = atoi(optarg);
 			break;
+			
+			case 'h':
+			bins = atoi(optarg);
+			break;
+			
+			case 'j':
+			obs_delta = atof(optarg);
+			break;
 
 		}
 	}
@@ -74,7 +86,7 @@ int main( int argc, char *argv[] )
 	int param_size = 2*M*(M+1);
 	
 	printf("Path delta set to: %f. \n", path_delta );
-	printf("Observation delta set to: %f. \n", obs_delta );
+	printf("Observation delta set to: %f. \n", obs_sigma );
 	
 	FourierSeries real_v(M);
 	real_v.set_mode( 0, 1, 0.5 - 0.5*_Complex_I);
@@ -115,7 +127,7 @@ int main( int argc, char *argv[] )
 	{
 		for( int j=0; j<path_steps; ++j )
 		{
-			noise << gsl_ran_gaussian( r, obs_delta ), gsl_ran_gaussian( r, obs_delta );
+			noise << gsl_ran_gaussian( r, obs_sigma ), gsl_ran_gaussian( r, obs_sigma );
 			y[i*path_steps+j] = real_path[i*path_steps+j] + noise;
 		}
 		observed_starting_points[ i ] = y[i*path_steps];
@@ -161,13 +173,13 @@ int main( int argc, char *argv[] )
 			c_star[j] = gsl_ran_gaussian( r, param_delta ) + gsl_ran_gaussian( r, param_delta )*_Complex_I + c[j]; // c* ~ N(c, param_delta).
 		
 		v.set_modes( c_star );
-		for( int i=0; i<parallel_paths; ++i )
-			em_overdamped_langevin( path_steps, path_delta, C, &v, x_star+i*path_steps, r, observed_starting_points[i]); // Generate x*
+		for( int ii=0; ii<parallel_paths; ++ii )
+			em_overdamped_langevin( path_steps, path_delta, C, &v, x_star+ii*path_steps, r, observed_starting_points[ii]); // Generate x*
 		
 		log_u = log( gsl_rng_uniform(r) );
 		p_param_prob = log_p( c_star, param_delta, param_size) - log_p( c, param_delta, param_size);		
 		//g_param_prob = log_g( c, c_star, param_delta, param_size) - log_g( c_star, c, param_delta, param_size);
-		p_paths_prob = log_p( y, x_star, c_star, path_steps*parallel_paths, obs_delta) - log_p(y, x, c, path_steps*parallel_paths, obs_delta);	
+		p_paths_prob = log_p( y, x_star, c_star, path_steps*parallel_paths, obs_sigma) - log_p(y, x, c, path_steps*parallel_paths, obs_sigma);	
 		log_alpha = p_param_prob + g_param_prob + p_paths_prob;
 		
 		if (log_u<log_alpha)
@@ -178,10 +190,10 @@ int main( int argc, char *argv[] )
 			for(int j=0; j<path_steps*parallel_paths; ++j) x[j] = x_star[j];
 			v.print_modes();
 		}
-		// if (i>burn) { // DISABLE BURN IN!
+		 if (i>burn) { // DISABLE BURN IN!
 			for( int j=0; j<param_size; ++j)
-				chain[ i*param_size + j ] = c[j];
-		//}
+				chain[ (i-burn)*param_size + j ] = c[j];
+		}
 	}
 	acceptance_rate = double( acceptance_frequency ) / mcmc_trials;
 	double _Complex averages[param_size];
@@ -204,86 +216,12 @@ int main( int argc, char *argv[] )
 	v.set_modes( averages );
 	v.print_modes();
 	
-	/*
-	 * Moving average text file.
-	 *
-	 */
-	double _Complex cumulative_sums[param_size];
-	for( int i=0; i<param_size; ++i )
-		cumulative_sums[i] = 0.0;
-		
-	FILE *fp;
-	fp = fopen("Testing/MCMC/data_complex.txt", "w+");
-	fprintf(fp, "#n");
-	
-	for(int i=1; i<M+1; i++)
-	{
-		fprintf(fp,"\tRe(v_\{%i,0\})\tIm(v_\{%i,0\})", i, i);
-	}
-	
-	for(int i=-M; i<M+1; i++)
-	for(int j=1; j<M+1; j++)
-	{
-		fprintf(fp,"\tRe(v_\{%i,%i\})\tIm(v_\{%i,%i\})", i, j, i, j);
-	}
-	fprintf(fp, "\n");
-		
-	double _Complex temp_mode;
-	int trials_so_far;
-	for( int i=0; i<mcmc_trials; i++)
-	{
-		fprintf(fp, "%i\t", i );
-		for( int j=0; j<param_size; ++j)
-		{
-		cumulative_sums[j] += chain[ i*param_size + j ];
-		fprintf(fp, "%f\t%f\t",
-					creal(cumulative_sums[j])/(i+1), 
-					cimag(cumulative_sums[j])/(i+1) );
-		}
-		fprintf(fp, "\n");
-	}
-	fclose(fp);	
-
-	/*
-	 * Time series text file.
-	 *
-	 */
-	
-	FILE *valf;
-	valf = fopen("Testing/MCMC/data_complex_ts.txt", "w+");
-	fprintf(valf, "#n");
-	
-	for(int i=1; i<M+1; i++)
-	{
-		fprintf(valf,"\tRe(v_\{%i,0\})\tIm(v_\{%i,0\})", i, i);
-	}
-	
-	for(int i=-M; i<M+1; i++)
-	for(int j=1; j<M+1; j++)
-	{
-		fprintf(valf,"\tRe(v_\{%i,%i\})\tIm(v_\{%i,%i\})", i, j, i, j);
-	}
-	fprintf(valf, "\n");
-		
-	for( int i=0; i<mcmc_trials; i++)
-	{
-		fprintf(valf, "%i\t", i );
-		for( int j=0; j<param_size; ++j)
-		{
-			temp_mode = chain[ i*param_size + j ];
-			fprintf(valf, "%f\t%f\t", creal(temp_mode), cimag(temp_mode) );
-		}
-		fprintf(valf, "\n");
-	}
-	fclose(valf);	
-	
-	//printf("free(real_path)\n");
+	output_average_file_complex(M, mcmc_trials, param_size, chain);
+	output_time_series_file_complex(M, mcmc_trials, param_size, chain);
+	output_posterior_density_complex(M, mcmc_trials, param_size, chain, bins);
 	//free(real_path);
-	//printf("free(x)\n");
 	//free(x);
-	//printf("free(x_star)\n");
 	//free(x_star);	
-	//printf("free(chain)\n");
 	//free(chain);
 	
 }
