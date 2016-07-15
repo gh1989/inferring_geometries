@@ -30,7 +30,7 @@ int main( int argc, char *argv[] )
 	int opt;
 	
 	// Get options from command line.
-	while( ( opt = getopt( argc, argv, ":s:P:N:c:d:p:b:q:o:k:h:" ) ) != EOF ) 
+	while( ( opt = getopt( argc, argv, ":s:P:N:c:d:p:b:q:o:k:h:j:" ) ) != EOF ) 
 	{
 	switch (opt)
 		{
@@ -84,6 +84,13 @@ int main( int argc, char *argv[] )
 	// Expansion cutoff and implied param_size ( including (0,0) -> 0 ).
 	int M = 1;
 	int param_size = 2*M*(M+1);
+	FourierSeries v(1);
+	int acceptance_frequency = 0;
+	double alpha;
+	double acceptance_rate;
+	double _Complex average_constant = 0;
+	double p_param_prob,g_param_prob,p_paths_prob;
+	double log_u, log_alpha;
 	
 	printf("Path delta set to: %f. \n", path_delta );
 	printf("Observation delta set to: %f. \n", obs_sigma );
@@ -109,20 +116,23 @@ int main( int argc, char *argv[] )
 	
 	// The real starting points of the parallel observations, we do not want the particles to be stuck in "modes" of the
 	// potential V so this helps.
-	Vector2d *real_starting_points;
-	real_starting_points = (Vector2d*) malloc( parallel_paths*sizeof( Vector2d ) );	
+	Vector2d *real_starting_points = (Vector2d*) malloc( parallel_paths*sizeof( Vector2d ) );	
+	Vector2d *observed_starting_points = (Vector2d*) malloc( parallel_paths*sizeof( Vector2d ) );
+	Vector2d *real_path =  ( Vector2d* ) malloc( parallel_paths*path_steps*sizeof( Vector2d ) ); 
+	Vector2d *x_star = (Vector2d*) malloc( path_steps*parallel_paths*sizeof( Vector2d ) );
+	Vector2d *x = (Vector2d*) malloc( path_steps*parallel_paths*sizeof( Vector2d ) );
+	Vector2d *y = ( Vector2d* ) malloc( parallel_paths*path_steps*sizeof( Vector2d ) );
+	
+	double _Complex *c = (double _Complex*) malloc(param_size*sizeof(double _Complex));
+	double _Complex *c_star = (double _Complex*) malloc(param_size*sizeof(double _Complex));
+	double _Complex *chain = (double _Complex*) malloc(mcmc_trials*param_size*sizeof(double _Complex));
+	
 	for( int i = 0; i<parallel_paths; ++i)
 		real_starting_points[i] << gsl_rng_uniform(r)*2-1, gsl_rng_uniform(r)*2-1;
-	
-	Vector2d *observed_starting_points;
-	observed_starting_points = (Vector2d*) malloc( parallel_paths*sizeof( Vector2d ) );
-	// Generate a path and the observation.
-	Vector2d *real_path, *y;
-	real_path = ( Vector2d* ) malloc( parallel_paths*path_steps*sizeof( Vector2d ) );
+		
 	for( int i=0; i<parallel_paths; ++i )
 		em_overdamped_langevin( path_steps, path_delta, C, &real_v, real_path+i*path_steps, r, real_starting_points[i]);
 
-	y = ( Vector2d* ) malloc( parallel_paths*path_steps*sizeof( Vector2d ) );
 	for( int i=0; i<parallel_paths; ++i)
 	{
 		for( int j=0; j<path_steps; ++j )
@@ -132,39 +142,18 @@ int main( int argc, char *argv[] )
 		}
 		observed_starting_points[ i ] = y[i*path_steps];
 	}
-	// Attempt to obtain the value of real_parameter_c with mcmc algo.
-	int acceptance_frequency = 0;
-	double alpha;
-	double acceptance_rate;
-	double _Complex average_constant = 0;
-	double _Complex *c, *c_star;
-	double _Complex *chain = (double _Complex*) malloc(mcmc_trials*param_size*sizeof(double _Complex));
-	c = (double _Complex*) malloc(param_size*sizeof(double _Complex));
-	c_star = (double _Complex*) malloc(param_size*sizeof(double _Complex));
-	double log_u, log_alpha;
 	
-	// Constants
-	for( int j=0; j<param_size; j++ ){
+	for( int j=0; j<param_size; j++ )
+	{
 		c[j] = gsl_ran_gaussian( r, param_delta ) + gsl_ran_gaussian( r, param_delta )*_Complex_I;
-		//printf("[Debug] c[%i]=%f+%fi.\n",j, creal(c[j]), cimag(c[j]));
 		chain[j] = c[j];
 	}
 	
-	double p_param_prob;
-	double g_param_prob;
-	double p_paths_prob;
-		
-	FourierSeries v(1);
 	v.set_modes( c );
 	
-	Vector2d *x_star = (Vector2d*) malloc( path_steps*parallel_paths*sizeof( Vector2d ) );
-	Vector2d *x = (Vector2d*) malloc( path_steps*parallel_paths*sizeof( Vector2d ) );
-	
 	for( int i=0; i<parallel_paths; ++i )
-	{
-		printf("[Debug] EM %i \n", i);
 		em_overdamped_langevin( path_steps, path_delta, C, &v, x+i*path_steps, r, observed_starting_points[i]);
-	}
+	
 	printf("\n ********** \n Starting MCMC. \n ********** \n");
 	for( int i=0; i<mcmc_trials+burn; ++i )
 	{
@@ -179,18 +168,18 @@ int main( int argc, char *argv[] )
 		log_u = log( gsl_rng_uniform(r) );
 		p_param_prob = log_p( c_star, param_delta, param_size) - log_p( c, param_delta, param_size);		
 		//g_param_prob = log_g( c, c_star, param_delta, param_size) - log_g( c_star, c, param_delta, param_size);
-		p_paths_prob = log_p( y, x_star, c_star, path_steps*parallel_paths, obs_sigma) - log_p(y, x, c, path_steps*parallel_paths, obs_sigma);	
+		p_paths_prob = log_p( y, x_star, path_steps*parallel_paths, obs_sigma, 1) - log_p(y, x, path_steps*parallel_paths, obs_sigma, 1);	
 		log_alpha = p_param_prob + g_param_prob + p_paths_prob;
 		
 		if (log_u<log_alpha)
 		{
-			printf("[MCMC] n=%i.\n -> Accepted: c_star! \n", i);
+			//printf("[MCMC] n=%i.\n -> Accepted: c_star! \n", i);
 			if (i>burn) acceptance_frequency += 1;
 			for( int j=0; j<param_size; ++j) c[j] = c_star[j];
 			for(int j=0; j<path_steps*parallel_paths; ++j) x[j] = x_star[j];
-			v.print_modes();
+			//v.print_modes();
 		}
-		 if (i>burn) { // DISABLE BURN IN!
+		 if (i>burn) {
 			for( int j=0; j<param_size; ++j)
 				chain[ (i-burn)*param_size + j ] = c[j];
 		}

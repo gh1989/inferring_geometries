@@ -1,5 +1,27 @@
 #include "file_io.h"
 
+void output_sigma_chain( int mcmc_trials, double *sigma_chain )
+{
+	FILE *fp;
+	fp = fopen("Testing/MCMC/data_sigma_ts.txt", "w+");	
+	
+	for( int i=0; i<mcmc_trials; ++i )
+	{
+		fprintf(fp, "%f\n", sigma_chain[i]);
+	}
+	fclose(fp);
+	
+	fp = fopen("Testing/MCMC/data_sigma_average_ts.txt", "w+");
+	double running_average = 0;
+	
+	for( int i=0; i<mcmc_trials; ++i )
+	{
+		running_average+=sigma_chain[i];
+		fprintf(fp, "%f\n", running_average/(i+1));
+	}
+	fclose(fp);
+}
+
 void output_posterior_density_complex( int M, int mcmc_trials, int param_size, double _Complex *chain, int bins){
    /*
 	* Output for the histogram. This function takes the chain, which contains the parameter chains for all 
@@ -189,4 +211,29 @@ void output_average_file_complex( int M, int mcmc_trials, int param_size, double
 		fprintf(fp, "\n");
 	}
 	fclose(fp);	
+}
+
+void output_report( int M, int mcmc_trials, int param_size, double _Complex *chain, double _Complex *means, double acceptance_rate, 
+					int k, int P, double obs_sigma, double diff_sigma, double obs_delta ) // TODO: pass in settings/configuration object.
+{
+	FILE *fp;
+	fp = fopen("Testing/MCMC/report.txt", "a");
+	
+	int idx;
+	double sigma_squared;
+	
+	
+	for( int j=0; j<param_size; ++j)
+	{
+		sigma_squared = 0;
+		for( int i=0; i<mcmc_trials; ++i )
+		{
+			idx = i*param_size + j;
+			sigma_squared += cabs( chain[idx] - means[j] )*cabs( chain[idx] - means[j] );
+		}
+		sigma_squared /= mcmc_trials;
+		fprintf(fp, "%i\t%i\t%f\t%f\t%f\t%f\n", k, P, obs_sigma, diff_sigma, obs_delta, sigma_squared);
+	}
+	
+	fclose(fp);
 }

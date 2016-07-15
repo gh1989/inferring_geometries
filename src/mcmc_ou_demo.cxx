@@ -110,7 +110,7 @@ int main( int argc, char *argv[] )
 		u = gsl_rng_uniform(r);
 		log_alpha = log_p( c_star, param_delta) - log_p( c, param_delta);
 		//log_alpha += log_g( c, c_star, param_delta) - log_g( c_star, c, param_delta);
-		log_alpha += log_p( y, x_star, c_star, path_steps, obs_delta) - log_p(y, x, c, path_steps, obs_delta);
+		log_alpha += log_p( y, x_star, path_steps, obs_delta, 1) - log_p(y, x, path_steps, obs_delta, 1);
 		alpha = exp( log_alpha );
 		if (u<alpha)
 		{

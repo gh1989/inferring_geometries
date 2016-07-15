@@ -10,6 +10,21 @@ double log_p( double c, double param_delta)
 	return -0.5/param_delta*c*c;
 }
 
+double log_p( double _Complex c, double param_delta )
+{
+	return -0.5/param_delta*cabs(c)*cabs(c);
+}
+
+double log_p_sigma( double sigma, double param_delta )
+{
+	return -0.5/param_delta*( log(sigma) )*( log(sigma) );
+}
+
+double log_g_sigma( double sigma_star, double sigma, double param_delta)
+{
+	return -0.5/param_delta*( log(sigma_star)-log(sigma) )*( log(sigma)-log(sigma) );
+}
+
 // sequence of complex constants
 double log_p( double _Complex *c, double param_delta, int length )
 {
@@ -49,7 +64,7 @@ double log_g( double _Complex *c_star, double _Complex *c, double param_delta, i
 	return -0.5/param_delta*sum;
 }
 
-double log_p( Vector2d *y, Vector2d *x, double c, int path_steps, double obs_delta)
+double log_p( Vector2d *y, Vector2d *x, int path_steps, double obs_delta, int real_per_observed)
 {
 	/* p( y | x, c ) for the Ornstein Uhlenbeck process
 	 * y_i = x_i + eps
@@ -64,12 +79,6 @@ double log_p( Vector2d *y, Vector2d *x, double c, int path_steps, double obs_del
 
 	double log_p_sum = 0.0;
 	for( int i=0; i<path_steps; ++i )
-		log_p_sum -= (0.5/obs_delta)*(y[i] - x[i]).transpose()*(y[i] - x[i]);
+		log_p_sum -= (0.5/obs_delta)*(y[i] - x[i*real_per_observed]).transpose()*(y[i] - x[i*real_per_observed]);
 	return log_p_sum;
-}
-
-double log_p(  Vector2d *y, Vector2d *x, double _Complex *c, int path_steps, double obs_delta)
-{
-	double hack_c = 1.0; // c is not explicitly used.
-	return log_p(  y, x, hack_c, path_steps, obs_delta);
 }
