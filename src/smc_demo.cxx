@@ -1,81 +1,99 @@
 #include "fourier_series.h"
-#include "mcmc.h"
+#include "smc.h"
+
+void print_tensor( Tensor<double, 3>, int, int );
+void print_tensor( Tensor<double,2>, int, int);
+void print_tensor( Tensor<double, 2>, int );
 
 int main(int argc, char *argv[]) 
 {
-	// Settings
-	int mcmc_trials = 100;
-	int parallel_paths = 12;
-	double param_noise = 0.05;
-	double path_noise = 0.1;
-	double path_delta = 0.01;
-	int path_length = 100;
-	int rng_seed = 1234;
-	double sigma = 0.01;
-	
-	const int M = 1;
-	FourierSeries v(M);
-	v.set_mode(1,1,0.5);
+	// Number of particles.
+	const int N = 4;
 
-	Matrix2d C;
-	C << sigma, 0, 0, sigma;
+	// Time horizon.
+	const int T = 8;
 
-	Vector2d noise;
-
-	// Trajectory containers
-	// The true paths
-	Vector2d *real_x;
-	real_x = (Vector2d*) malloc( sizeof(Vector2d) * path_length * parallel_paths * mcmc_trials );
-
-	// The observed paths
-	Vector2d *y;
-	y = (Vector2d*) malloc( sizeof(Vector2d) * path_length * parallel_paths * mcmc_trials );
- 
-	// The starting positions of each particle (sample path)
-	Vector2d *real_starting_points;
-	real_starting_points = (Vector2d*) malloc( sizeof(Vector2d) * parallel_paths );
-
-     	// Setup the random number generator
+	// Prepare random number generator (rng).
+	const int rng_seed = 1234;
 	gsl_rng *r;
 	gsl_rng_env_setup();
 	r = gsl_rng_alloc( gsl_rng_default );
 	gsl_rng_set( r, rng_seed );
 
-	for( int i=0; i<parallel_paths; ++i )
-	{
-		real_starting_points[i] << gsl_rng_uniform(r)*2 - 1, gsl_rng_uniform(r)*2 - 1;
-	}
+	// The path timestep.
+	const double dt = 0.01;
+	const double observation_noise_variance = 0.1;
+	const double trajectory_diffusion_sigma = 0.01;
+	
 
-	int idx;
-	// Generate observations
-	for( int k=0; k<parallel_paths; ++k ){
-	    em_overdamped_langevin( path_length, path_delta, C, &v, real_x+k*path_length, r, real_starting_points[i]); 
-	    for( int j=0; j<path_length; ++j ){
-		noise << gsl_ran_gaussian(r, obs_noise), gsl_ran_gaussian(r, obs_noise);
-		idx = k*path_length + j;
-		y[idx] = real_x[idx] + noise;
-		}
-	}
+	Tensor<double, 2> w(T, N);
+	Tensor<double, 3> x(T, N, 2);
 
-	double _Complex parameter;
-	parameter = gsl_ran_gaussian(r, param_noise) + _Complex_I* gsl_ran_gaussian(r, param_noise);
-	double sigma_param;
-	sigma_param = gsl_ran_lognormal(r, 0, param_noise );	
+	// The projection of the potential onto the finite-d subspace
+	FourierSeries V(1);
+	V.set_mode(1, 1, 0.5);
 
-	Vector2d *x;
-	x = (Vector2d*) malloc( sizeof(Vector2d)*path_length*parallel_paths*mcmc_trials );
+	// The observations.
+	printf("Here are the observations.\n");
+	Tensor<double,2> y(T, 2);
+	generate_observations( r, y, T, V, dt, observation_noise_variance, trajectory_diffusion_sigma );
+	print_tensor(y, T);
 
-	for( int k=0; k<parallel_paths; ++k){
-		x[k*path_length] = y[k*path_length] + gsl_rng_gaussian(r, sigma_param);
-	 }
+	// Initialising.
+	generate_particle_samples( r, x, N, 0 );
 
-	double *weights;
-	weights = (double*)malloc( sizeof(double)*parallel_paths*path_length );
+	// The particles.
 
-	for( int k=0; k<parallel_paths; ++k )
-	{
-		weights[
-	}
+	printf("Here are the particles.\n");
+	// A quick test...
+	print_tensor( x, T, N);
+
+	assign_weights( x, w, y, N, 0, observation_noise_variance );
+	// The weights.
+	printf("Here are the weights.\n");
+	// A quick test...
+	print_tensor( w, T, N);
+
+	//Calculation of the marginal likelihood estimate
+	double phat_0 = 0;
+	Tensor<double,1> phat(T);
+	for( int i=0; i<N; ++i )
+		phat_0 += w( 0, i );
+	phat_0 /= N;
+	phat(0) = phat_0;
+	printf("We found that the marginal likelihood estimate for t=0: %f. \n", phat(0) ); 
 
 	return 0;
+}
+
+void print_tensor( Tensor<double,3> x, int r, int c )
+{
+	for( int i=0; i<r; ++i )
+	{
+		for( int j=0; j<c; ++j )
+		{
+		printf("(%.2f,%.2f)\t", x(i,j,0), x(i,j,1) );
+		}
+	printf("\n");
+	}
+}
+
+void print_tensor( Tensor<double,2> x, int r, int c )
+{
+	for( int i=0; i<r; ++i )
+	{
+		for( int j=0; j<c; ++j )
+		{
+		printf("%.6f\t", x(i,j) );
+		}
+	printf("\n");
+	}
+}
+
+void print_tensor( Tensor<double,2> x, int l )
+{
+	for( int i=0; i<l; ++i )
+	{
+	printf("(%.2f,%.2f)\n", x(i,0), x(i,1) );
+	}
 }
