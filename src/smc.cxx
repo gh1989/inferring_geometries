@@ -24,7 +24,8 @@ void generate_observations( gsl_rng *r,
 
 void generate_particle_samples( gsl_rng *r, 
 								Tensor<double, 3> &x, 
-								int N, int t )
+								int N, int t, FourierSeries &V, double dt, 
+								double trajectory_diffusion_sigma )
 {
 	
 	if (t == 0)
@@ -38,6 +39,20 @@ void generate_particle_samples( gsl_rng *r,
 		return;	
 	}
 
+	Vector2d dx(0,0);
+	Vector2d current;
+	Vector2d diffusion_noise(0,0);	
+	
+	for( int i=0; i<N; ++i )
+	{
+		current << x(t-1,i,0), x(t-1,i,0);
+		diffusion_noise << gsl_ran_gaussian( r, 2*dt ),
+						   gsl_ran_gaussian( r, 2*dt );
+
+		dx = -V.grad(current)*dt + trajectory_diffusion_sigma*diffusion_noise;
+		x(t,i,0) = x(t-1,i,0) + dx(0);
+		x(t,i,1) = x(t-1,i,1) + dx(1);
+	}
 }
 
 
@@ -47,15 +62,11 @@ void assign_weights( Tensor<double,3> &x,
 					 int N, int t,
 					 double observation_noise_variance )
 {
-	if (t == 0)
+
+	for( int i=0; i<N; ++i )
 	{
-		for( int i=0; i<N; ++i )
-		{
-			// Initial density.
-			w(0,i) = calculate_weight( y, x, N, i, 0, observation_noise_variance );
-		}	
-		return;	
-	}
+		w(t,i) = calculate_weight( y, x, N, i, t, observation_noise_variance );
+	}	
 
 }
 
@@ -79,9 +90,6 @@ double calculate_weight( Tensor<double,2> &y, Tensor<double,3> &x,
 	x_square = (y(t,0)-x(t,i,0))*(y(t,0)-x(t,i,0));
 	y_square = (y(t,1)-x(t,i,1))*(y(t,1)-x(t,i,1));
 	weight = exp(-exponent_constant*(x_square+y_square))/normalisation;
-
-	printf("Weight calculated(t=%i, i=%i): %f.\n", t, i, weight );
-
 	return weight;
 }
 
