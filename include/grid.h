@@ -1,10 +1,7 @@
 #pragma once
-#include <assert.h> 
-#include <Eigen/Dense>
-#include "fourier_series.h"
+#include <assert.h>
 #include <fftw3.h>
-
-using namespace Eigen;
+#include "fourier_series.h"
 
 struct Grid
 {

@@ -1,10 +1,14 @@
 #pragma once
+
+#include <Eigen/Dense>
 #include <complex.h>
 #undef I
-#include <Eigen/Dense>
-#include <math.h>
 
 using namespace Eigen;
+
+#ifndef M_PI
+	#define M_PI 3.14159265359
+#endif
 
 // M is the cutoff for |i| <= M.
 // A full set -M <= i = M is 2*M+1 values

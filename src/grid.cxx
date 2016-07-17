@@ -1,6 +1,5 @@
 #include "grid.h"
 
-
 Grid::Grid( double min_x_, double max_x_, double min_y_ ,double  max_y_, int size_x_, int size_y_) : 
 		min_x( min_x_ ), min_y( min_y_ ), max_x( max_x_ ), max_y( max_y_ ), size_x(size_x_), size_y(size_y_)
 {

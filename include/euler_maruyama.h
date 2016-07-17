@@ -1,10 +1,12 @@
 #pragma once
-#include <Eigen/Dense>
-#include "fourier_series.h"
-#include "grid.h"
-#include <math.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
+#include <Eigen/Dense>
+#include <math.h>
+
+#include "fourier_series.h"
+#include "grid.h"
+
 
 using namespace Eigen;
 using Eigen::Matrix2d;
