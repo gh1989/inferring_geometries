@@ -1,6 +1,8 @@
 #pragma once
+
 #include <complex.h>
 #undef I
+
 #include <math.h>
 #include <stdio.h>
 #include <Eigen/Dense>

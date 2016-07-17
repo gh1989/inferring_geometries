@@ -1,6 +1,8 @@
 #pragma once
+
 #include <assert.h>
 #include <fftw3.h>
+
 #include "fourier_series.h"
 
 struct Grid

@@ -166,7 +166,7 @@ int main(int argc,char *argv[])
         fprintf( gnu_script, "set pm3d map\n" );
         fprintf( gnu_script, "set isosample 128\n" );
         fprintf( gnu_script, "set palette defined (-1 \"white\", 0 \"white\", 1 \"red\")\n" );
-        fprintf( gnu_script, "do for [n=1:%i] \{\n", path_steps );
+        fprintf( gnu_script, "do for [n=1:%i] {\n", path_steps );
         fprintf( gnu_script, "splot [-1:1][-1:1][-1:1] f(x,y) w pm3d,\\\n");
         fprintf( gnu_script, "\"data.txt\" u 2:3:(g($2,$3)) every :::::n w lp t sprintf(\"n=%%i\", n) pt 0,\\\n" );
         
@@ -179,7 +179,7 @@ int main(int argc,char *argv[])
             fprintf(gnu_script, "\\\n");
         }
         
-        fprintf( gnu_script, "\}");
+        fprintf( gnu_script, "}");
         fclose( gnu_script );
     }
 }

@@ -148,12 +148,12 @@ void output_time_series_file_complex( int M, int mcmc_trials, int param_size, do
     fp = fopen("Testing/MCMC/data_complex_ts.txt", "w+");
     fprintf(fp, "#n");
     
-    for(int i=1; i<M+1; i++) fprintf(fp,"\tRe(v_\{%i,0\})\tIm(v_\{%i,0\})", i, i);
+    for(int i=1; i<M+1; i++) fprintf(fp,"\tRe(v_{%i,0})\tIm(v_{%i,0})", i, i);
     
     for(int i=-M; i<M+1; i++)
     for(int j=1; j<M+1; j++)
     {
-        fprintf(fp,"\tRe(v_\{%i,%i\})\tIm(v_\{%i,%i\})", i, j, i, j);
+        fprintf(fp,"\tRe(v_{%i,%i})\tIm(v_{%i,%i})", i, j, i, j);
     }
     fprintf(fp, "\n");
         
@@ -186,13 +186,13 @@ void output_average_file_complex( int M, int mcmc_trials, int param_size, double
     
     for(int i=1; i<M+1; i++)
     {
-        fprintf(fp,"\tRe(v_\{%i,0\})\tIm(v_\{%i,0\})", i, i);
+        fprintf(fp,"\tRe(v_{%i,0})\tIm(v_{%i,0})", i, i);
     }
     
     for(int i=-M; i<M+1; i++)
     for(int j=1; j<M+1; j++)
     {
-        fprintf(fp,"\tRe(v_\{%i,%i\})\tIm(v_\{%i,%i\})", i, j, i, j);
+        fprintf(fp,"\tRe(v_{%i,%i})\tIm(v_{%i,%i})", i, j, i, j);
     }
     fprintf(fp, "\n");
         

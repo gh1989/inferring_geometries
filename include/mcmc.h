@@ -1,10 +1,12 @@
 #pragma once
 #include <Eigen/Dense>
-#include "euler_maruyama.h"
-#include "fourier_series.h"
 #include <gsl/gsl_cdf.h>
+
 #include <math.h>
 #include <stdio.h>
+
+#include "euler_maruyama.h"
+#include "fourier_series.h"
 
 double log_p_sigma( double sigma, double param_delta );
 double log_p( double c, double param_delta);

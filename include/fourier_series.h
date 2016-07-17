@@ -1,18 +1,16 @@
 #pragma once
 
-#include <Eigen/Dense>
 #include <complex.h>
 #undef I
-
-using namespace Eigen;
 
 #ifndef M_PI
     #define M_PI 3.14159265359
 #endif
 
-// M is the cutoff for |i| <= M.
-// A full set -M <= i = M is 2*M+1 values
-// Due to the reality constraint v*_{-k} = v_{k}.
+#include <Eigen/Dense>
+
+using namespace Eigen;
+
 const double _Complex two_pi_i = 2*M_PI*_Complex_I;
 
 struct FourierSeries
