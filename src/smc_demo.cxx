@@ -21,6 +21,7 @@ int main(int argc, char *argv[])
 	
 	Tensor<double, 2> w(T, N);
     Tensor<double, 3> x(T, N, 2);
+    Tensor<double, 1> phat(T);
 	Tensor<double, 2> y(T, 2);
 	
     FourierSeries V(1);
@@ -32,7 +33,7 @@ int main(int argc, char *argv[])
     print_tensor(y, T);
 
     // SMC algorithm.
-    sequential_monte_carlo( r, x, w, y, V, N, T, dt, observation_noise_variance, trajectory_diffusion_sigma );
+    sequential_monte_carlo( r, x, w, y, phat, V, N, T, dt, observation_noise_variance, trajectory_diffusion_sigma );
 	print_tensor(w,T,N);
     print_tensor(x,T,N);
     

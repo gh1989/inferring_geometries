@@ -90,21 +90,38 @@ double calculate_weight( Tensor<double,2> &y, Tensor<double,3> &x,
     return weight;
 }
 
-void sequential_monte_carlo( gsl_rng *r,
-                             Tensor<double,3> &x,
-                             Tensor<double,2> &w,
-                             Tensor<double,2> &y,
-                             FourierSeries &V,
-                             int N, int T, double dt, 
-                             double observation_noise_variance, double trajectory_diffusion_sigma )
+double estimate_marginal_likelihood( int t, int N, Tensor<double,2> &w, Tensor<double, 1> &phat )
+{
+    double total = 0;
+    for( int i=0; i<N; ++i )
+    {
+        total += w(t, i);
+    }
+    
+    if( t==0 )
+        return (1/N) * total;
+
+    return (1/N) * phat( t-1 ) * total;
+}
+
+double sequential_monte_carlo(  gsl_rng *r,
+                                Tensor<double,3> &x,
+                                Tensor<double,2> &w,
+                                Tensor<double,2> &y,
+                                Tensor<double, 1> &phat,
+                                FourierSeries &V,
+                                int N, int T, double dt, 
+                                double observation_noise_variance, double trajectory_diffusion_sigma )
 {
     generate_particle_samples(r, x, y, N, 0, V, dt, observation_noise_variance, trajectory_diffusion_sigma );
     assign_weights( x, w, y, N, 0, observation_noise_variance );
-
+    phat(0) = estimate_marginal_likelihood(0, N, w, phat);
+    
     Tensor<double, 3> resampled( T, N, 2 );
     gsl_ran_discrete_t *g;
 
     unsigned int resample_particle_index;
+    double estimated_marginal;
     double p[N];
     
     for( int t=1; t<T; t++ )
@@ -135,6 +152,12 @@ void sequential_monte_carlo( gsl_rng *r,
                   
         generate_particle_samples(r, x, y, N, t, V, dt, observation_noise_variance, trajectory_diffusion_sigma );
         assign_weights( x, w, y, N, t, observation_noise_variance );
-     		
+        phat(t) = estimate_marginal_likelihood(t, N, w, phat);
     }
+    
+    estimated_marginal = phat(0);
+    for( int t=0; t<T; ++t )
+        estimated_marginal *= phat(t);
+        
+    return estimated_marginal;
 }

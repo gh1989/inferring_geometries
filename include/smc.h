@@ -37,10 +37,15 @@ double calculate_weight( Tensor<double,2> &y, Tensor<double,3> &x,
                          int N, int i, int t,
                          double observation_noise_variance );
 
-void sequential_monte_carlo( gsl_rng *r,
-                             Tensor<double,3> &x,
-                             Tensor<double,2> &w,
-                             Tensor<double,2> &y,
-                             FourierSeries &V,
-                             int N, int T, double dt, 
-                             double observation_noise_variance, double trajectory_diffusion_sigma );
+double sequential_monte_carlo( gsl_rng *r,
+                               Tensor<double, 3> &x,
+                               Tensor<double, 2> &w,
+                               Tensor<double, 2> &y,
+                               Tensor<double, 1> &phat,
+                               FourierSeries &V,
+                               int N, int T, double dt, 
+                               double observation_noise_variance, double trajectory_diffusion_sigma );
+                             
+double estimate_marginal_likelihood( int t, int N, 
+                                     Tensor<double, 2> &w, 
+                                     Tensor<double, 1> &phat );
