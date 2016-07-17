@@ -24,8 +24,9 @@ void generate_observations( gsl_rng *r,
 
 void generate_particle_samples( gsl_rng *r, 
                                 Tensor<double, 3> &x, 
+                                Tensor<double, 2> &y,
                                 int N, int t, FourierSeries &V, double dt, 
-                                double trajectory_diffusion_sigma )
+                                double observation_noise_variance, double trajectory_diffusion_sigma )
 {
     
     if (t == 0)
@@ -33,8 +34,8 @@ void generate_particle_samples( gsl_rng *r,
         for( int i=0; i<N; ++i )
         {
             // Initial density.
-            x(0,i,0) = gsl_rng_uniform(r);
-            x(0,i,1) = gsl_rng_uniform(r);
+            x(0,i,0) = y(0,0) + gsl_ran_gaussian(r, observation_noise_variance);
+            x(0,i,1) = y(0,1) + gsl_ran_gaussian(r, observation_noise_variance);
         }    
         return;    
     }
@@ -43,15 +44,28 @@ void generate_particle_samples( gsl_rng *r,
     Vector2d current;
     Vector2d diffusion_noise(0,0);    
     
+    // Sample by forward simulation of the previous resampled x_{t-1}.
+    // x_t ~ q(.|x_{t-1}, y_t)
     for( int i=0; i<N; ++i )
     {
+    
+       // Is this how we sample x_t ~ q(.|x_{t-1}, y_t)?
+        
         current << x(t-1,i,0), x(t-1,i,0);
         diffusion_noise << gsl_ran_gaussian( r, 2*dt ),
-                           gsl_ran_gaussian( r, 2*dt );
-
+                         gsl_ran_gaussian( r, 2*dt );
+     
+         
         dx = -V.grad(current)*dt + trajectory_diffusion_sigma*diffusion_noise;
         x(t,i,0) = x(t-1,i,0) + dx(0);
         x(t,i,1) = x(t-1,i,1) + dx(1);
+                
+        // Is this how we sample x_t ~ q(.|x_{t-1}, y_t)?
+        
+        /*
+        x(t,i,0) = y(t,0) + gsl_ran_gaussian(r, observation_noise_variance);
+        x(t,i,1) = y(t,1) + gsl_ran_gaussian(r, observation_noise_variance);
+        */
     }
 }
 
@@ -93,3 +107,57 @@ double calculate_weight( Tensor<double,2> &y, Tensor<double,3> &x,
     return weight;
 }
 
+void sequential_monte_carlo( gsl_rng *r,
+                             Tensor<double,3> &x,
+                             Tensor<double,2> &w,
+                             Tensor<double,2> &y,
+                             FourierSeries &V,
+                             int N, int T, double dt, 
+                             double observation_noise_variance, double trajectory_diffusion_sigma )
+{
+    // Importance sampling (IS) to approximate 
+    generate_particle_samples(r, x, y, N, 0, V, dt, observation_noise_variance, trajectory_diffusion_sigma );
+
+    // The weights.
+    assign_weights( x, w, y, N, 0, observation_noise_variance );
+
+    Tensor<double, 3> resampled( T, N, 2 );
+    gsl_ran_discrete_t *g;
+
+    unsigned int resample_particle_index;
+    double p[N];
+    
+    for( int t=1; t<T; t++ )
+    {
+        // Now to resample the particles with replacement, weighted with their
+        // respective weights as calculated earlier.
+        for( int i=0; i<N; ++i )
+            p[i] = w(t,i);
+        g = gsl_ran_discrete_preproc(N, p);
+    
+        for(int i=0; i<N; ++i )
+        {
+            // A random draw of an integer in {0, ..., N-1} with mass function
+            // given by p.
+            resample_particle_index = gsl_ran_discrete(r, g);
+            for( int j=0; j<t; ++j )
+            {
+                resampled(j,i,0) = x( j, resample_particle_index, 0 );
+                resampled(j,i,1) = x( j, resample_particle_index, 1 );
+            }        
+        }
+        // Set the trajectory/particle to the resampled trajectory, up to t.
+        for(int i=0; i<N; ++i )
+        {
+            for( int j=0; j<t; ++j )
+            {
+                x(j, i, 0) = resampled(j,i,0);
+                x(j, i, 1) = resampled(j,i,1);
+            }
+        }
+                  
+        generate_particle_samples(r, x, y, N, t, V, dt, observation_noise_variance, trajectory_diffusion_sigma );
+        assign_weights( x, w, y, N, t, observation_noise_variance );
+     		
+    }
+}
