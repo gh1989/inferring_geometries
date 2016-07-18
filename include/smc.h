@@ -15,35 +15,31 @@
 using namespace Eigen;
 
 void generate_observations( gsl_rng *r, 
-                            Tensor<double, 2> &y, 
-                            int T, FourierSeries &V, double dt,
+                            Tensor<double, 3> &y, 
+                            int K, int T, FourierSeries &V, double dt,
                             double observation_noise_variance, double trajectory_diffusion_sigma  );
 
 void generate_particle_samples( gsl_rng *r, 
-                                Tensor<double, 3> &x, 
-                                Tensor<double, 2> &y,
-                                int N, int t, FourierSeries &V, double dt, 
+                                Tensor<double, 4> &x, 
+                                Tensor<double, 3> &y,
+                                int K, int N, int t, FourierSeries &V, double dt, 
                                 double observation_noise_variance, double trajectory_diffusion_sigma );
 
 void simulate_forwards( gsl_rng*, Tensor<double, 3>&, FourierSeries& );
 
-void assign_weights( Tensor<double, 3> &x, 
+void assign_weights( Tensor<double, 4> &x, 
                      Tensor<double, 2> &w,
-                     Tensor<double, 2> &y,
-                     int N, int t,
+                     Tensor<double, 3> &y,
+                     int K, int N, int t,
                      double observation_noise_variance );
 
-double calculate_weight( Tensor<double,2> &y, Tensor<double,3> &x, 
-                         int N, int i, int t,
-                         double observation_noise_variance );
-
 double sequential_monte_carlo( gsl_rng *r,
-                               Tensor<double, 3> &x,
+                               Tensor<double, 4> &x,
                                Tensor<double, 2> &w,
-                               Tensor<double, 2> &y,
+                               Tensor<double, 3> &y,
                                Tensor<double, 1> &phat,
                                FourierSeries &V,
-                               int N, int T, double dt, 
+                               int K, int N, int T, double dt, 
                                double observation_noise_variance, double trajectory_diffusion_sigma );
                              
 double estimate_marginal_likelihood( int t, int N, 
