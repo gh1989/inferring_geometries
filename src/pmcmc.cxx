@@ -12,9 +12,7 @@ void sample_smc_approximation( gsl_rng *r,
     double p[N];
     
     for(int i=0; i<N; ++i)
-    {
-        p[i] = w(T-1, i);
-    }
+        p[i] = exp( w(T-1, i) );
     
     unsigned int particle_index;
     gsl_ran_discrete_t *g = gsl_ran_discrete_preproc(N, p);

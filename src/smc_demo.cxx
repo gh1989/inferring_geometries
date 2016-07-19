@@ -55,7 +55,8 @@ int main(int argc, char *argv[])
     Tensor<double, 4> x(K, T, N, 2);
     Tensor<double, 1> phat(T);
 	Tensor<double, 3> y(K, T, 2);
-	
+    Tensor<double, 4> resampled( K, T, N, 2 );
+    
     FourierSeries V(1);
     V.set_mode(1, 1, 0.5-0.5*_Complex_I);
 
@@ -65,7 +66,7 @@ int main(int argc, char *argv[])
     print_tensor(y, K, T);
 
     // SMC algorithm.
-    sequential_monte_carlo( r, x, w, y, phat, V, K, N, T, dt, observation_noise_variance, trajectory_diffusion_sigma );
+    sequential_monte_carlo( r, x, w, y, phat, resampled, V, K, N, T, dt, observation_noise_variance, trajectory_diffusion_sigma );
 	print_tensor(w,T,N);
     print_tensor(x,K,T,N);
     

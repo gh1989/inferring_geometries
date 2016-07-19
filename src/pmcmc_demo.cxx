@@ -20,13 +20,13 @@ void output_time_series( Tensor<double, 2> chain, int trials, int parameters )
 int main(int argc, char *argv[])
 {
     int trials = 1000;
-    int rng_seed = 123;
-    int K = 1;  
+    int rng_seed = 123456;
+    int K = 25;  
     int N = 10;
     int T = 16;
     double dt = 0.001;
-    double observation_noise_variance = 0.1;
-    double trajectory_diffusion_sigma = 0.0001;
+    double observation_noise_variance = 0.01;
+    double trajectory_diffusion_sigma = 0.01;
     double proposal_c_variance = 0.05;
     const int parameters = 2;
 
@@ -80,12 +80,15 @@ int main(int argc, char *argv[])
     Tensor<double, 1> C(parameters);
     Tensor<double, 1> C_star(parameters);
     Tensor<double, 2> C_chain(trials, parameters);
+    Tensor<double, 4> resampled( K, T, N, 2 );
     
     double acceptance=0;
     double log_acceptance_probability;
     double log_uniform_sample;
-    double log_marginal_likelihood_c;
-    double log_marginal_likelihood_c_star;
+    double log_marginal_c;
+    double log_marginal_c_star;
+    double norm_total;
+    double current_estimate_c;
     
     FourierSeries V(1);
     V.set_mode(1,1, 0.5 - 0.5*_Complex_I);
@@ -100,59 +103,58 @@ int main(int argc, char *argv[])
         C(i) = gsl_ran_gaussian( r, proposal_c_variance );
         C_chain(0,i) = C(i);
     }    
-    
+
     V.set_mode(1, 1, C(0) + C(1)*_Complex_I);
-    log_marginal_likelihood_c = sequential_monte_carlo( r, x, w, y, phat, V, 
-                                                        K, N, T, dt, 
-                                                        observation_noise_variance,
-                                                        trajectory_diffusion_sigma );
     
-    sample_smc_approximation( r, K, N, T, x, w, X );
-    
+    log_marginal_c = sequential_monte_carlo( r,
+                                             x, w, y,
+                                             phat,
+                                             resampled,
+                                             V,
+                                             K, N, T, 
+                                             dt,
+                                             observation_noise_variance,
+                                             trajectory_diffusion_sigma );
+
+    double diff_total;
     for(int i=0; i<trials; ++i)
     {
+        printf("%i...\n", i);
+        
         for( int i=0; i<parameters; ++i )
-        {
             C_star(i) = gsl_ran_gaussian( r, proposal_c_variance ) + C(i);
-        }    
-        //printf("Propose: %.2f + %.2f i", C_star(0), C_star(1) );
         V.set_mode( 1,1, C_star(0) + C_star(1)*_Complex_I);
 
-        log_marginal_likelihood_c_star = sequential_monte_carlo( r, x, w, y, phat, V, 
-                                                                 K, N, T, dt, 
-                                                                 observation_noise_variance, 
-                                                                 trajectory_diffusion_sigma );
-        sample_smc_approximation( r, K, N, T, x, w, X_star);
+        log_marginal_c_star = sequential_monte_carlo( r,
+                                                      x, w, y,
+                                                      phat,
+                                                      resampled,
+                                                      V,
+                                                      K, N, T, 
+                                                      dt,
+                                                      observation_noise_variance,
+                                                      trajectory_diffusion_sigma );
 
-        log_acceptance_probability = calculate_log_acceptance_probability( log_marginal_likelihood_c, 
-                                                                           log_marginal_likelihood_c_star, 
-                                                                           C, C_star, 
+        log_acceptance_probability = calculate_log_acceptance_probability( log_marginal_c,
+                                                                           log_marginal_c_star, 
+                                                                           C, 
+                                                                           C_star, 
                                                                            proposal_c_variance,
-                                                                           parameters );
+                                                                           parameters );       
+        
         log_uniform_sample = log( gsl_rng_uniform(r) );
-
-        //printf(" log_uniform_sample: %f, log_acceptance_probability: %f. \n", log_uniform_sample, log_acceptance_probability );
-
         if ( log_uniform_sample < log_acceptance_probability )
-        {
-            C(0) = C_star(0);
-            C(1) = C_star(1);
+        {         
+            for( int ii=0; ii<parameters; ++ii ) C(ii) = C_star(ii);
+            log_marginal_c = log_marginal_c_star;
             acceptance += 1;
             V.print_modes();
         }
-        C_chain(i, 0) = C(0);
-        C_chain(i, 1) = C(1);
+        
+        for( int ii=0; ii<parameters; ++ii ) C_chain(i, ii) = C(ii);
         
     }
 
-    double _Complex average = 0.0;    
-    for( int i=0; i<trials; ++i )
-        average += C_chain(i,0) + C_chain(i,1)*_Complex_I;
-    average /= trials;
-    printf("The average: %.2f + %.2fi. \n", creal(average), cimag(average) );
-
-    printf("Acceptance: %.2f. \n", acceptance/trials*100.0 );
-    
     output_time_series( C_chain, trials, parameters );
     return 0;
 }

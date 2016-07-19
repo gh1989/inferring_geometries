@@ -38,10 +38,19 @@ double sequential_monte_carlo( gsl_rng *r,
                                Tensor<double, 2> &w,
                                Tensor<double, 3> &y,
                                Tensor<double, 1> &phat,
+                               Tensor<double, 4> &resampled,
                                FourierSeries &V,
                                int K, int N, int T, double dt, 
-                               double observation_noise_variance, double trajectory_diffusion_sigma );
+                               double observation_noise_variance,
+                               double trajectory_diffusion_sigma );
                              
 double estimate_marginal_likelihood( int t, int N, 
                                      Tensor<double, 2> &w, 
                                      Tensor<double, 1> &phat );
+                                     
+void resample( gsl_rng *r,
+               gsl_ran_discrete_t *g,
+               Tensor<double,4> &x,
+               Tensor<double,2> &w,
+               Tensor<double, 4> &resampled,
+               int K, int N, int T );
