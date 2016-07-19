@@ -27,7 +27,7 @@ void generate_particle_samples( gsl_rng *r,
 
 void simulate_forwards( gsl_rng*, Tensor<double, 3>&, FourierSeries& );
 
-void assign_weights( Tensor<double, 4> &x, 
+double assign_weights( Tensor<double, 4> &x, 
                      Tensor<double, 2> &w,
                      Tensor<double, 3> &y,
                      int K, int N, int t,

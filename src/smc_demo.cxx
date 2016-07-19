@@ -1,5 +1,6 @@
 #include "fourier_series.h"
 #include "smc.h"
+#include <getopt.h>
 
 void print_tensor( Tensor<double, 4>, int, int, int );
 void print_tensor( Tensor<double,2>, int, int);
@@ -7,14 +8,43 @@ void print_tensor( Tensor<double, 3>, int, int );
 
 int main(int argc, char *argv[]) 
 {
-    const int K = 2;  
-    const int T = 100;
-    const int N = 8;
-    const double dt = 0.1;
-    const double observation_noise_variance = 0.1;
-    const double trajectory_diffusion_sigma = 0.1;
-    const int rng_seed = 12345;
+    int K = 2;  
+    int T = 100;
+    int N = 8;
+    double dt = 0.1;
+    double observation_noise_variance = 0.1;
+    double trajectory_diffusion_sigma = 0.1;
+    int rng_seed = 12345;
   
+    int opt;
+
+    while( ( opt = getopt( argc, argv, ":T:R:K:N:L:d:o:t:c:" ) ) != EOF ) 
+    {
+    switch (opt)
+        {
+            case 'T':
+            T = atoi(optarg);
+            break;
+            case 'R':
+            rng_seed = atoi(optarg);
+            break;
+            case 'K':
+            K = atoi(optarg);
+            break;
+            case 'N':
+            N = atoi(optarg);
+            break;
+            case 'd':
+            dt = atof(optarg);
+            break;
+            case 'o':
+            observation_noise_variance = atof(optarg);
+            break;  
+            case 't':
+            trajectory_diffusion_sigma = atof(optarg);
+            break;   
+        }
+    }
 
     gsl_rng *r;
     gsl_rng_env_setup();
@@ -63,7 +93,7 @@ void print_tensor( Tensor<double,4> x, int K, int T, int N )
 void print_tensor( Tensor<double,2> w, int T, int N )
 {
     for( int i=0; i<T; ++i ){
-        for( int j=0; j<N; ++j ) printf("%.6f\t", w(i,j) );
+        for( int j=0; j<N; ++j ) printf("%.10f\t", w(i,j) );
     printf("\n");
     }
 }

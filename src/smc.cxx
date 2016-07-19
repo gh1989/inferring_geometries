@@ -67,11 +67,11 @@ void generate_particle_samples( gsl_rng *r,
 }
 
 
-void assign_weights( Tensor<double,4> &x, 
-                     Tensor<double,2> &w,
-                     Tensor<double,3> &y,
-                     int K, int N, int t,
-                     double observation_noise_variance )
+double assign_weights( Tensor<double,4> &x, 
+                       Tensor<double,2> &w,
+                       Tensor<double,3> &y,
+                       int K, int N, int t,
+                       double observation_noise_variance )
 {
    /*
     * Calculating and storing the unnormalised weights. The sampler used for
@@ -85,10 +85,19 @@ void assign_weights( Tensor<double,4> &x,
     
     double exponent_constant = 0.5 / observation_noise_variance;
     double coefficient_constant = 0.5 / (M_PI*observation_noise_variance);
-
+    double total = 0;
     double x_square;
     double y_square;
-        
+    
+    if( t==0 )
+    {
+        for( int i=0; i<N; ++i )
+        {
+            w(t,i) = 1.0/N;
+        }
+    return 1.0;
+    }
+
     for( int i=0; i<N; ++i )
     {
         x_square = 0;
@@ -100,8 +109,14 @@ void assign_weights( Tensor<double,4> &x,
             y_square += (y(k, t, 1)-x(k, t, i, 1))*(y(k, t, 1)-x(k, t, i, 1));
         }
 
-        w(t,i) = -exponent_constant*(x_square+y_square);
+        w(t,i) = coefficient_constant*exp(-exponent_constant*(x_square+y_square));
     }
+    
+    for( int i=0; i<N; ++i )
+        total += w(t,i);
+    for( int i=0; i<N; ++i )
+        w(t,i) /= total;
+    return total;
 }
 
 double estimate_marginal_likelihood( int t, int N, Tensor<double,2> &w, Tensor<double, 1> &phat )
@@ -114,9 +129,7 @@ double estimate_marginal_likelihood( int t, int N, Tensor<double,2> &w, Tensor<d
     */
     double total = 0;
     for( int i=0; i<N; ++i )
-    {
         total += w(t, i);
-    }
     
     if( t==0 )
         return (1.0/N) * total;
@@ -141,14 +154,15 @@ double sequential_monte_carlo(  gsl_rng *r,
     */
 
     generate_particle_samples(r, x, y, K, N, 0, V, dt, observation_noise_variance, trajectory_diffusion_sigma );
-    assign_weights( x, w, y, K, N, 0, observation_noise_variance );
-    phat(0) = estimate_marginal_likelihood(0, N, w, phat);
+    double norm_total;    
+    norm_total = assign_weights( x, w, y, K, N, 0, observation_noise_variance );
+    phat(0) = norm_total*estimate_marginal_likelihood(0, N, w, phat);
     
     Tensor<double, 4> resampled( K, T, N, 2 );
     gsl_ran_discrete_t *g;
 
     unsigned int resample_particle_index;
-    double estimated_marginal;
+    double log_estimated_marginal;
     double p[N];
     
     for( int t=1; t<T; t++ )
@@ -181,10 +195,10 @@ double sequential_monte_carlo(  gsl_rng *r,
         }
                   
         generate_particle_samples(r, x, y, K, N, t, V, dt, observation_noise_variance, trajectory_diffusion_sigma );
-        assign_weights( x, w, y, K, N, t, observation_noise_variance );
-        phat(t) = estimate_marginal_likelihood(t, N, w, phat);
+        norm_total = assign_weights( x, w, y, K, N, t, observation_noise_variance );
+        phat(t) = norm_total*estimate_marginal_likelihood(t, N, w, phat);
     }
     
-    estimated_marginal = phat(T-1);
-    return estimated_marginal;
+    log_estimated_marginal = log( phat(T-1) );
+    return log_estimated_marginal;
 }

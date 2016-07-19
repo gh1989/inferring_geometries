@@ -29,12 +29,12 @@ void sample_smc_approximation( gsl_rng *r,
 
 }
 
-double calculate_log_acceptance_probability( double marginal_likelihood_c,
-                                             double marginal_likelihood_c_star,
+double calculate_log_acceptance_probability( double log_marginal_likelihood_c,
+                                             double log_marginal_likelihood_c_star,
                                              Tensor<double, 1> &C, 
                                              Tensor<double, 1> &C_star,
                                              double proposal_c_variance )
 {
-    return  log(marginal_likelihood_c_star)-log(marginal_likelihood_c)\
+    return  log_marginal_likelihood_c_star-log_marginal_likelihood_c\
             +(0.5/proposal_c_variance)*( C(0)*C(0) - C_star(0)*C_star(0) );
 }
