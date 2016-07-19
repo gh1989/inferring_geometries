@@ -153,6 +153,9 @@ double sequential_monte_carlo(  gsl_rng *r,
     * according to GSL documentation on gsl_ran_discrete function usage.)
     */
 
+    //printf("Trying sequential monte carlo with potential modes: \n");
+    //V.print_modes();
+    
     generate_particle_samples(r, x, y, K, N, 0, V, dt, observation_noise_variance, trajectory_diffusion_sigma );
     double norm_total;    
     norm_total = assign_weights( x, w, y, K, N, 0, observation_noise_variance );

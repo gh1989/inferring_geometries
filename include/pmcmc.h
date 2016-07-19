@@ -25,4 +25,5 @@ double calculate_log_acceptance_probability( double log_marginal_likelihood_c,
                                              double log_marginal_likelihood_c_star,
                                              Tensor<double, 1> &C, 
                                              Tensor<double, 1> &C_star,
-                                             double proposal_c_variance );
+                                             double proposal_c_variance, 
+                                             int parameters );

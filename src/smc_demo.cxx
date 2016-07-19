@@ -8,13 +8,13 @@ void print_tensor( Tensor<double, 3>, int, int );
 
 int main(int argc, char *argv[]) 
 {
-    int K = 2;  
-    int T = 100;
+    int K = 1;  
+    int T = 16;
     int N = 8;
-    double dt = 0.1;
+    double dt = 0.001;
     double observation_noise_variance = 0.1;
     double trajectory_diffusion_sigma = 0.1;
-    int rng_seed = 12345;
+    int rng_seed = 123;
   
     int opt;
 

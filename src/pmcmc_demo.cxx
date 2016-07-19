@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
     int trials = 1000;
     int rng_seed = 123;
     int K = 1;  
-    int N = 1;
+    int N = 10;
     int T = 16;
     double dt = 0.001;
     double observation_noise_variance = 0.1;
@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
             C_star(i) = gsl_ran_gaussian( r, proposal_c_variance ) + C(i);
         }    
         //printf("Propose: %.2f + %.2f i", C_star(0), C_star(1) );
-        V.set_mode(1,1, C_star(0) + C_star(1)*_Complex_I);
+        V.set_mode( 1,1, C_star(0) + C_star(1)*_Complex_I);
 
         log_marginal_likelihood_c_star = sequential_monte_carlo( r, x, w, y, phat, V, 
                                                                  K, N, T, dt, 
@@ -127,7 +127,8 @@ int main(int argc, char *argv[])
         log_acceptance_probability = calculate_log_acceptance_probability( log_marginal_likelihood_c, 
                                                                            log_marginal_likelihood_c_star, 
                                                                            C, C_star, 
-                                                                           proposal_c_variance);
+                                                                           proposal_c_variance,
+                                                                           parameters );
         log_uniform_sample = log( gsl_rng_uniform(r) );
 
         //printf(" log_uniform_sample: %f, log_acceptance_probability: %f. \n", log_uniform_sample, log_acceptance_probability );
@@ -137,9 +138,6 @@ int main(int argc, char *argv[])
             C(0) = C_star(0);
             C(1) = C_star(1);
             acceptance += 1;
-            /*("[%i] Accepted. Update: %.2f+%.2f i ----> %.2f + %.2fi. \n", i, 
-                    C(0), C(1), C_star(0), C_star(1) );
-            */
             V.print_modes();
         }
         C_chain(i, 0) = C(0);
