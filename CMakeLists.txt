@@ -24,16 +24,20 @@ add_library(mcmc src/mcmc.cxx)
 add_library(grid src/grid.cxx)
 add_library(smc src/smc.cxx)
 add_library(pmcmc src/pmcmc.cxx)
-
+add_library(util src/util.cxx)
+target_link_libraries(util gsl gslcblas)
 target_link_libraries(grid fftw3 gsl gslcblas)
 target_link_libraries( euler_maruyama fftw3 grid )
 include_directories ( include /usr/local/include/eigen3 )
+
+add_executable( smc_diffusion_bridge_demo src/smc_diffusion_bridge_demo.cxx )
+target_link_libraries( smc_diffusion_bridge_demo smc util fourier_series gsl gslcblas )
 
 add_executable( pmcmc_demo src/pmcmc_demo.cxx )
 target_link_libraries( pmcmc_demo pmcmc smc gsl gslcblas fourier_series )
 
 add_executable( smc_demo src/smc_demo.cxx)
-target_link_libraries( smc_demo smc fourier_series gsl gslcblas )
+target_link_libraries( smc_demo smc fourier_series gsl gslcblas util )
 
 add_executable( grid_demo src/grid_demo.cxx )
 target_link_libraries( grid_demo fftw3 grid fourier_series )
