@@ -181,7 +181,7 @@ void FourierSeries::print_modes()
         for( int i=-M; i<M+1; ++i )
         {
             md = get_mode(i,j);
-            printf(" v_\{%i, %i\} = %f + %fi. \t", i, j, creal(md), cimag(md));
+            printf(" v(%i,%i) = %.3f + %.3fi.\t", i, j, creal(md), cimag(md));
         }
         printf("\n");
     }

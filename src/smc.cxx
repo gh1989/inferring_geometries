@@ -228,11 +228,9 @@ Vector2d bridge_drift(  int j,
     double delta_j = 1 - j*ds;
     double o = observation_noise_variance;
     double s = trajectory_diffusion_sigma;
-    double sigma2tilde = pow( s, 2.0 ) - pow( s, 6.0 ) / ( pow( s, 2.0 )*delta_j + pow( o, 2.0 ) );
+    double sigma2tilde = pow( s, 2.0 ) / ( pow( s, 2.0 )*delta_j + o );
     
-    Vector2d aj = -V.grad( xj );
-    aj += sigma2tilde*( y_end - xj - V.grad( xj ) * delta_j );
-    return aj;
+    return -V.grad( xj ) + sigma2tilde*( y_end - xj + V.grad( xj ) * delta_j );
 }
 
 double bridge_variance( int j,
@@ -244,7 +242,7 @@ double bridge_variance( int j,
     double o = observation_noise_variance;
     double s = trajectory_diffusion_sigma;
     
-    return pow( s, 2.0 ) - pow( s, 6.0 ) / ( pow( s, 2.0 )*delta_j + pow( o, 2.0 ) );
+    return pow( s, 2.0 ) - pow( s, 4.0 ) / ( pow( s, 2.0 )*delta_j + o );
 }
 
 void generate_particle_samples( gsl_rng *r, 
@@ -265,7 +263,7 @@ void generate_particle_samples( gsl_rng *r,
     
     double sigma_x;
     double sigma_y;
-    double rho = 0;
+    double rho = 1;
 
     double noise_x;
     double noise_y;
@@ -290,12 +288,9 @@ void generate_particle_samples( gsl_rng *r,
                 x(k,t*(M+1)+(j+1),i,0) = current(0) + dx(0);
                 x(k,t*(M+1)+(j+1),i,1) = current(1) + dx(1);
                 
-                current << x(k,t*M+j,i,0),  x(k,t*M+j,i,1);
-                printf("j:%i \n", j );
+                current << x(k,t*(M+1)+(j+1),i,0),  x(k,t*(M+1)+(j+1),i,1);
             }
-            
-            printf(" (%f,%f). \n ", y_end(0), y_end(1) );
-            
+
             x(k,(t+1)*(M+1),i,0) = y_end(0); 
             x(k,(t+1)*(M+1),i,1) = y_end(1);
         }

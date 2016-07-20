@@ -11,21 +11,21 @@ pmcmcSummary <- function( pmcmcdata )
 pmcmcSummary2d <- function( pmcmcdata )
 {
   par(mfrow = c(4, 2))
-  
+
   plot(ts(pmcmcdata[1:1]))
   plot(ts(pmcmcdata[2:2]))
 
-  plot(rollmean(pmcmc_timeseries[1:1],10))
-  plot(rollmean(pmcmc_timeseries[2:2],10))
-  
+  plot(rollmean(ts(pmcmc_timeseries[1:1]),1))
+  plot(rollmean(ts(pmcmc_timeseries[2:2]),1))
+
   acf(pmcmcdata[1:1])
   acf(pmcmcdata[2:2])
-  
-  hist(ts(pmcmcdata[1:1]), 30)
-  hist(ts(pmcmcdata[2:2]), 30)
+
+  hist(ts(pmcmcdata[1:1]), 30, main="")
+  hist(ts(pmcmcdata[2:2]), 30, main="")
   
 }
-setwd("../output")
+setwd("~/inferring_geometries/output")
 
 pmcmcdata_timeseries = read.table("pmcmc_timeseries.txt")
 pmcmcSummary2d(pmcmcdata_timeseries)
