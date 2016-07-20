@@ -1,10 +1,7 @@
 #include "fourier_series.h"
 #include "smc.h"
 #include <getopt.h>
-
-void print_tensor( Tensor<double, 4>, int, int, int );
-void print_tensor( Tensor<double,2>, int, int);
-void print_tensor( Tensor<double, 3>, int, int );
+#include "util.h"
 
 int main(int argc, char *argv[]) 
 {
@@ -71,40 +68,4 @@ int main(int argc, char *argv[])
     print_tensor(x,K,T,N);
     
     return 0;
-}
-
-/*
- * Printing helper functions.
- */
- 
-void print_tensor( Tensor<double,4> x, int K, int T, int N )
-{
-
-    for( int k=0; k<K; ++k )
-    {
-    printf("Independent path: %i... \n", k );
-    for( int i=0; i<T; ++i ){
-        for( int j=0; j<N; ++j )
-            printf("(%.2f,%.2f)\t", x(k,i,j,0), x(k,i,j,1) );
-    printf("\n");
-    }
-    }
-}
-
-void print_tensor( Tensor<double,2> w, int T, int N )
-{
-    for( int i=0; i<T; ++i ){
-        for( int j=0; j<N; ++j ) printf("%.10f\t", w(i,j) );
-    printf("\n");
-    }
-}
-
-void print_tensor( Tensor<double,3> y, int K, int T )
-{
-    for( int k=0; k<K; ++k )
-    {
-    printf("Independent path: %i... \n ", k);
-    for( int i=0; i<T; ++i )
-        printf("(%.2f,%.2f)\n", y(k,i,0), y(k,i,1) );
-    }
 }

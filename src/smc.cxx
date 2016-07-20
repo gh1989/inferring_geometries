@@ -34,12 +34,14 @@ void generate_observations( gsl_rng *r,
     } 
 }
 
-
 void generate_particle_samples( gsl_rng *r, 
                                 Tensor<double, 4> &x, 
                                 Tensor<double, 3> &y,
-                                int K, int N, int t, FourierSeries &V, double dt, 
-                                double observation_noise_variance, double trajectory_diffusion_sigma )
+                                int K, int N, int t, 
+                                FourierSeries &V, 
+                                double dt, 
+                                double observation_noise_variance, 
+                                double trajectory_diffusion_sigma )
 {
     if (t == 0)
     {
@@ -150,6 +152,38 @@ double sequential_monte_carlo( gsl_rng *r,
     return log( phat(T-1) );
 }
 
+double sequential_monte_carlo( gsl_rng *r,
+                               Tensor<double, 4> &x,
+                               Tensor<double, 2> &w,
+                               Tensor<double, 3> &y,
+                               Tensor<double, 1> &phat,
+                               Tensor<double, 4> &resampled,
+                               FourierSeries &V,
+                               int K, int N, int T, int M,
+                               double dt, double ds,
+                               double observation_noise_variance,
+                               double trajectory_diffusion_sigma )
+{
+    gsl_ran_discrete_t *g;
+    
+    for( int t=0; t<T; t++ )
+    {
+        generate_particle_samples( r, 
+                                   x, y,
+                                   K, N, t, M,
+                                   V, 
+                                   dt, ds,
+                                   observation_noise_variance, 
+                                   trajectory_diffusion_sigma );
+                                   
+        assign_weights( x, w, y, K, N, t, observation_noise_variance );
+        phat(t) = estimate_marginal_likelihood(t, N, w, phat);
+        resample( r, g, x, w, resampled, K, N, t );
+    }
+    
+    return log( phat(T-1) );
+}
+
 void resample( gsl_rng *r,
                gsl_ran_discrete_t *g,
                Tensor<double,4> &x,
@@ -181,3 +215,90 @@ void resample( gsl_rng *r,
         x(k, t, i, 1) = resampled(k, t, i, 1);
     }
 }
+
+
+Vector2d bridge_drift(  int j, 
+                        double ds,
+                        Vector2d xj, 
+                        Vector2d y_end,
+                        FourierSeries &V,
+                        double observation_noise_variance, 
+                        double trajectory_diffusion_sigma)
+{
+    double delta_j = 1 - j*ds;
+    double o = observation_noise_variance;
+    double s = trajectory_diffusion_sigma;
+    double sigma2tilde = pow( s, 2.0 ) - pow( s, 6.0 ) / ( pow( s, 2.0 )*delta_j + pow( o, 2.0 ) );
+    
+    Vector2d aj = -V.grad( xj );
+    aj += sigma2tilde*( y_end - xj - V.grad( xj ) * delta_j );
+    return aj;
+}
+
+double bridge_variance( int j,
+                        int ds,
+                        double observation_noise_variance, 
+                        double trajectory_diffusion_sigma )
+{
+    double delta_j = 1 - j*ds;
+    double o = observation_noise_variance;
+    double s = trajectory_diffusion_sigma;
+    
+    return pow( s, 2.0 ) - pow( s, 6.0 ) / ( pow( s, 2.0 )*delta_j + pow( o, 2.0 ) );
+}
+
+void generate_particle_samples( gsl_rng *r, 
+                                Tensor<double, 4> &x, 
+                                Tensor<double, 3> &y,
+                                int K, int N, int t, int M,
+                                FourierSeries &V, 
+                                double dt, double ds,
+                                double observation_noise_variance, 
+                                double trajectory_diffusion_sigma )
+{
+
+    Vector2d dx(0,0);
+    Vector2d current;
+    Vector2d diffusion_noise(0,0);    
+    Vector2d bj;
+    Vector2d y_end;
+    
+    double sigma_x;
+    double sigma_y;
+    double rho = 0;
+
+    double noise_x;
+    double noise_y;
+       
+    for( int k=0; k<K; ++k )
+    {
+        y_end << y(k, t+1, 0), y(k, t+1, 1);
+        for( int i=0; i<N; ++i )
+        {
+            current << y(k,t,0), y(k,t,1);
+            x(k,t*(M+1),i,0) = current(0); 
+            x(k,t*(M+1),i,1) = current(1);
+            for( int j=0; j<M; ++j )
+            {
+                sigma_x = sigma_y = sqrt( bridge_variance(j, ds, observation_noise_variance, trajectory_diffusion_sigma ) );                    
+                gsl_ran_bivariate_gaussian( r, sigma_x, sigma_y, rho, &noise_x, &noise_y );
+                diffusion_noise << noise_x, noise_y;
+                
+                dx = bridge_drift(j, ds, current, y_end, V, observation_noise_variance, trajectory_diffusion_sigma)*ds;
+                dx += diffusion_noise*sqrt(ds);
+                
+                x(k,t*(M+1)+(j+1),i,0) = current(0) + dx(0);
+                x(k,t*(M+1)+(j+1),i,1) = current(1) + dx(1);
+                
+                current << x(k,t*M+j,i,0),  x(k,t*M+j,i,1);
+                printf("j:%i \n", j );
+            }
+            
+            printf(" (%f,%f). \n ", y_end(0), y_end(1) );
+            
+            x(k,(t+1)*(M+1),i,0) = y_end(0); 
+            x(k,(t+1)*(M+1),i,1) = y_end(1);
+        }
+    }
+}
+
